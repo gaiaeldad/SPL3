@@ -4,7 +4,8 @@ import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.impl.stomp.Frames.Frame;
 import bgu.spl.net.impl.stomp.Frames.FrameParser;
 import bgu.spl.net.srv.Connections;
-
+//////this is the new version 20.1 16:37 
+/// 
 public class StompMessageProtoclImpl implements StompMessagingProtocol<String> {
    private boolean shouldTerminate = false;
    private Integer connectionId;

@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+//abstract frame class 
+
 public abstract class Frame {
    protected final ConcurrentHashMap<String, String> headers;//thread safe 
    protected final String body;
