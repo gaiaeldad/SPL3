@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import bgu.spl.net.api.MessageEncoderDecoder;
 
+
+//this looks good 
 public class StompEncDec implements MessageEncoderDecoder<String> {
 
     private byte[] buffer = new byte[1 << 10]; // Start with 1KB buffer
@@ -11,7 +13,7 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
 
     @Override
     public String decodeNextByte(byte nextByte) {
-        if (nextByte == '\n') { // Assuming '\n' marks the end of a message
+        if (nextByte == 0) { // Assuming '\n' marks the end of a message
             return popString(); // Return the complete message
         }
         pushByte(nextByte); // Add the byte to the buffer
@@ -20,8 +22,8 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
 
     @Override
     public byte[] encode(String message) {
-        // Append '\n' as the delimiter and convert the message to bytes
-        return (message + "\n").getBytes(StandardCharsets.UTF_8);
+        // Append '\u0000' as the delimiter and convert the message to bytes
+        return (message + '\u0000').getBytes(StandardCharsets.UTF_8);
     }
 
     private String popString() {

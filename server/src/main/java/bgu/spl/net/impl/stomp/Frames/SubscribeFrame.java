@@ -5,50 +5,75 @@ import java.io.IOException;
 import java.util.Map;
 
 public class SubscribeFrame extends Frame {
-   SubscribeFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
-      super(headers, body, connections, connectionId);
-   }
 
-   public void process() {
-      boolean shouldSubscribe = true;
+    public SubscribeFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
+        super(headers, body, connections, connectionId);
+    }
 
-      try {
-         this.checkDestination();
-         this.checkId();
-      } catch (IOException var4) {
-         shouldSubscribe = false;
-         String[] SummaryAndBodyErr = var4.getMessage().split(":", 2);
-         FrameUtil.handleError(this, SummaryAndBodyErr[0], SummaryAndBodyErr[1], this.connections, this.connectionId, (String)this.headers.get("receipt"));
-      }
+    @Override
+    public void process() {
+        boolean subscriptionSuccessful = true;
 
-      if (shouldSubscribe) {
-         this.subscribe();
-         if (this.headers.containsKey("receipt")) {
-            FrameUtil.sendReceiptFrame((String)this.headers.get("receipt"), this.connections, this.connectionId);
-         }
-      }
+        try {
+            validateDestination(); // Validate the "destination" header
+            validateSubscriptionId(); // Validate the "id" header
+        } catch (IOException e) {
+            subscriptionSuccessful = false;
+            // Handle error by sending an ERROR frame with appropriate details
+            String[] errorDetails = e.getMessage().split(":", 2);
+            FrameHelper.handleError(
+                this,
+                errorDetails[0],
+                errorDetails[1],
+                connections,
+                connectionId,
+                headers.get("receipt") // Optional "receipt" header
+            );
+        }
 
-   }
+        if (subscriptionSuccessful) {
+            performSubscription(); // Add the subscription to the server
+            // Send a RECEIPT frame if the client included a "receipt" header
+            if (headers.containsKey("receipt")) {
+                FrameHelper.sendReceiptFrame(headers.get("receipt"), connections, connectionId);
+            }
+        }
+    }
 
-   private void subscribe() {
-      this.connections.subscribe((String)this.headers.get("destination"), Integer.parseInt((String)this.headers.get("id")), this.connectionId);
-   }
+   
+    // Validate the "id" header to ensure it exists and is unique for the client
+    private void validateSubscriptionId() throws IOException {
+        String id = headers.get("id");
 
-   private void checkId() throws IOException {
-      if (!this.headers.containsKey("id")) {
-         throw new IOException("Frame doesn't contain id header:SUBSCRIBE frame must contain id header");
-      } else if (this.connections.getHandler(this.connectionId).getUser().getChannels().containsKey(Integer.parseInt((String)this.headers.get("id")))) {
-         throw new IOException("id is not unique:You tried to subscribe to an already subscribed channel");
-      }
-   }
+        if (id == null) {
+            throw new IOException("Missing Header:SUBSCRIBE frame must include the 'id' header.");
+        }
 
-   private void checkDestination() throws IOException {
-      if (!this.headers.containsKey("destination")) {
-         throw new IOException("Frame doesn't contain destination header:SUBSCRIBE frame must contain destination header");
-      }
-   }
+        int subscriptionId = Integer.parseInt(id);
 
-   public String getCommand() {
-      return "SUBSCRIBE";
-   }
+        if (connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
+            throw new IOException("Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
+        }
+    }
+
+    // Validate the "destination" header to ensure it exists
+    private void validateDestination() throws IOException {
+        if (!headers.containsKey("destination")) {
+            throw new IOException("Missing Header:SUBSCRIBE frame must include the 'destination' header.");
+        }
+    }
+
+    // Add the subscription for the client to the specified destination
+    private void performSubscription() {
+      connections.subscribe(
+          headers.get("destination"),
+          Integer.parseInt(headers.get("id")),
+          connectionId
+      );
+  }
+
+    @Override
+    public String getCommand() {
+        return "SUBSCRIBE";
+    }
 }

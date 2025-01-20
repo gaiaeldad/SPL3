@@ -7,9 +7,10 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class StompProtocolImpl<T> implements StompMessagingProtocol<T> {
-
+///////this is the old version with the string i didnt want to delet it 20.1 
+/// //look for class StompMessageProtoclImpl instead for the frames version 
     private int connectionId;
-    private Connections<T> connections =  new ConnectionsImpl<>(); ////////////////cheak!!!
+    private Connections<T> connections =  new ConnectionsImpl<>(); ////////////////check this 
     private boolean shouldTerminate = false;
     private final Map<String, String> subscriptionIdToChannel = new HashMap<>();
 

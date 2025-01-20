@@ -1,48 +1,68 @@
-package bgu.spl.net.impl.stomp.Frames;
+package main.java.bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
 import java.util.Map;
 
 public class UnsubscribeFrame extends Frame {
-   UnsubscribeFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
-      super(headers, body, connections, connectionId);
-   }
 
-   public void process() {
-      boolean shouldUnsubscribe = true;
+    public UnsubscribeFrame( Map<String, String> headers, String body,Connections<String> connections, int connectionId) {
+        super(headers, body, connections, connectionId);
+    }
 
-      try {
-         this.checkId();
-      } catch (IOException var4) {
-         shouldUnsubscribe = false;
-         String[] SummaryAndBodyErr = var4.getMessage().split(":", 2);
-         FrameUtil.handleError(this, SummaryAndBodyErr[0], SummaryAndBodyErr[1], this.connections, this.connectionId, (String)this.headers.get("receipt"));
+    @Override
+    public void process() {
+        boolean ShouldUnsubscribed = true;
+
+        try {
+            validateId(); // Ensure the "id" header is present and valid
+        } catch (IOException e) {
+         ShouldUnsubscribed = false;
+            // Handle error by sending an ERROR frame to the client
+            String[] errorDetails = e.getMessage().split(":", 2);
+            FrameHelper.handleError(
+                this,
+                errorDetails[0],
+                errorDetails[1],
+                connections,
+                connectionId,
+                headers.get("receipt") 
+            );
+        }
+
+        if (ShouldUnsubscribed) {
+            performUnsubscription(); // Remove the subscription
+
+            // Send a RECEIPT frame if a "receipt" header was provided
+            if (headers.containsKey("receipt")) {
+                FrameHelper.sendReceiptFrame(headers.get("receipt"), connections, connectionId);
+            }
+        }
+    }
+
+     // Validate the "id" header to ensure it exists and is associated with the client
+     private void validateId() throws IOException {
+      String id = headers.get("id");
+
+      if (id == null) {
+          throw new IOException("Missing Header:UNSUBSCRIBE frame must include the 'id' header.");
       }
 
-      if (shouldUnsubscribe) {
-         this.unsubscribe();
-         if (this.headers.containsKey("receipt")) {
-            FrameUtil.sendReceiptFrame((String)this.headers.get("receipt"), this.connections, this.connectionId);
-         }
+      int subscriptionId = Integer.parseInt(id);
+
+      // Check if the client is subscribed to the given subscription ID
+      if (!connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
+          throw new IOException("Invalid Subscription:You tried to unsubscribe from a subscription that does not exist.");
       }
+  }
 
-   }
-
-   private void unsubscribe() {
-      this.connections.unsubscribe(Integer.parseInt((String)this.headers.get("id")), this.connectionId);
-   }
-
-   private void checkId() throws IOException {
-      if (!this.headers.containsKey("id")) {
-         throw new IOException("Frame doesn't contain id header:UNSUBSCRIBE frame must contain id header");
-      } else if (!this.connections.getHandler(this.connectionId).getUser().getChannels().containsKey(Integer.parseInt((String)this.headers.get("id")))) {
-         throw new IOException("you are not subscribed to this channelId:You tried to unsubscribe from a channel you are not subscribed to");
-      }
-   }
-
-   public String getCommand() {
-      return "UNSUBSCRIBE";
-   }
+    // Remove the subscription from the server for the given client and ID
+    private void performUnsubscription() {
+        int subscriptionId = Integer.parseInt(headers.get("id"));
+        connections.unsubscribe(subscriptionId, connectionId);
+    }
+    @Override
+    public String getCommand() {
+        return "UNSUBSCRIBE";
+    }
 }
-    

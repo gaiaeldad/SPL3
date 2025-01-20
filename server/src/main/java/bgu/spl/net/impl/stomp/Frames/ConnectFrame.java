@@ -5,74 +5,103 @@ import java.io.IOException;
 import java.util.Map;
 
 public class ConnectFrame extends Frame {
-   ConnectFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
-      super(headers, body, connections, connectionId);
-   }
 
-   public void process() {
-      boolean shouldLogin = true;
+    public ConnectFrame(Map<String, String> headers, String body, Connections<String> connections, int connectionId) {
+        super(headers, body, connections, connectionId);
+    }
 
-      try {
-         this.checkAcceptVersion();
-         this.checkHost();
-         this.checkLogin();
-      } catch (IOException var4) {
-         shouldLogin = false;
-         String[] SummaryAndBodyErr = var4.getMessage().split(":", 2);
-         FrameUtil.handleError(this, SummaryAndBodyErr[0], SummaryAndBodyErr[1], this.connections, this.connectionId, (String)this.headers.get("receipt"));
-      }
+    @Override
+    public void process() {
+        boolean loginSuccessful = true;
 
-      if (shouldLogin) {
-         this.login();
-         FrameUtil.sendConnectedFrame((String)this.headers.get("accept-version"), this.connectionId, this.connections);
-         if (this.headers.containsKey("receipt")) {
-            FrameUtil.sendReceiptFrame((String)this.headers.get("receipt"), this.connections, this.connectionId);
-         }
-      }
+        try {
+            validateAcceptVersion(); // Validate the "accept-version" header
+            validateHost();          // Validate the "host" header
+            validateCredentials();   // Validate "login" and "passcode" headers
+        } catch (IOException e) {
+            // If validation fails, handle the error and stop further processing
+            loginSuccessful = false;
+            String[] errorDetails = e.getMessage().split(":", 2);//allows separate the error type from the error description
+            FrameHelper.handleError(
+                this,
+                errorDetails[0],
+                errorDetails[1],
+                connections,
+                connectionId,
+                headers.get("receipt") // Use the "receipt" header if present
+            );
+        }
 
-   }
+        if (loginSuccessful) {
+            performLogin(); // Log the user in
+            FrameHelper.sendConnectedFrame(headers.get("accept-version"), connectionId, connections); // Send "CONNECTED" frame
 
-   private void login() {
-      this.connections.login(this.connectionId, (String)this.headers.get("login"), (String)this.headers.get("passcode"));
-   }
+            // If a "receipt" header is provided, send a "RECEIPT" frame
+            if (headers.containsKey("receipt")) {
+                FrameHelper.sendReceiptFrame(headers.get("receipt"), connections, connectionId);
+            }
+        }
+    }
 
-   private void checkLogin() throws IOException {
-      if (this.headers.containsKey("login") && this.headers.containsKey("passcode")) {
-         if (!this.isLegalLoginInfo((String)this.headers.get("login"), (String)this.headers.get("passcode"))) {
-            throw new IOException("Password does not match UserName:User " + (String)this.headers.get("login") + "'s password is diffrent than what you inserted");
-         } else if (this.isUserLogedIn((String)this.headers.get("login"), (String)this.headers.get("passcode"))) {
-            throw new IOException("User already logged in:User " + (String)this.headers.get("login") + "is logged in somewhere else");
-         }
-      } else {
-         throw new IOException("Frame doesn't contain login or password header:CONNECT frame must contain login and password headers");
-      }
-   }
+    
+    // Validate the "accept-version" header to ensure it is set to "1.2"
+    private void validateAcceptVersion() throws IOException {
+        String acceptVersion = headers.get("accept-version");
+        if (acceptVersion == null) {
+            throw new IOException("Missing Header:CONNECT frame must include the 'accept-version' header.");
+        }
+        if (!acceptVersion.equals("1.2")) {
+            throw new IOException("Invalid Version:Only STOMP version 1.2 is supported.");
+        }
+    }
 
-   private boolean isUserLogedIn(String userName, String password) {
-      return this.connections.isUserLogedIn(userName, password);
-   }
+    
+    // Validate the "host" header to ensure it matches the expected host
+    private void validateHost() throws IOException {
+        String host = headers.get("host");
+        if (host == null) {
+            throw new IOException("Missing Header:CONNECT frame must include the 'host' header.");
+        }
+        if (!host.equals(FrameHelper.HOST)) {
+            throw new IOException("Invalid Host:The 'host' header must match: " + FrameHelper.HOST);
+        }
+    }
 
-   private boolean isLegalLoginInfo(String userName, String password) {
-      return this.connections.isLegalLoginInfo(userName, password);
-   }
+    // Validate the "login" and "passcode" headers and check if the user is allowed to log in
+    private void validateCredentials() throws IOException {
+        String login = headers.get("login");
+        String passcode = headers.get("passcode");
 
-   private void checkHost() throws IOException {
-      if (!this.headers.containsKey("host")) {
-         throw new IOException("Frame doesn't contain host header:CONNECT frame must contain host header, please use" + FrameUtil.HOST);
-      } else if (!((String)this.headers.get("host")).equals(FrameUtil.HOST)) {
-         throw new IOException("Frame doesn't match host header:In CONNECT frame the host must be equal to: 1.2");
-      }
-   }
+        if (login == null || passcode == null) {
+            throw new IOException("Missing Credentials:CONNECT frame must include both 'login' and 'passcode' headers.");
+        }
 
-   private void checkAcceptVersion() throws IOException {
-      if (!this.headers.containsKey("accept-version")) {
-         throw new IOException("Frame doesn't contain accept-version header:CONNECT frame must contain accept-version, we currently support version: 1.2");
-      } else if (!((String)this.headers.get("accept-version")).equals("1.2")) {
-         throw new IOException("Frame doesn't match accept-version header:In CONNECT frame the accept-version must be equal to: 1.2");
-      }
-   }
+        if (!isValidLogin(login, passcode)) {
+            throw new IOException("Authentication Failed:The provided credentials are invalid.");
+        }
 
-   public String getCommand() {
-      return "CONNECT";
-   }
+        if (isUserLoggedIn(login)) {
+            throw new IOException("User Already Logged In:User '" + login + "' is already logged in.");
+        }
+    }
+
+    // Perform the login by notifying the connections object
+    private void performLogin() {
+        connections.login(connectionId, headers.get("login"), headers.get("passcode"));
+    }
+
+    // Check if the login and passcode are valid
+    private boolean isValidLogin(String login, String passcode) {
+        return connections.isLegalLoginInfo(login, passcode);
+    }
+
+    // Check if the user is already logged in
+    private boolean isUserLoggedIn(String login) {
+        return connections.isUserLogedIn(login);
+    }
+
+    @Override
+    public String getCommand() {
+        return "CONNECT";
+    }
 }
