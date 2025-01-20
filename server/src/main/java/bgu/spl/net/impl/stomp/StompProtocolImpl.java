@@ -13,9 +13,6 @@ public class StompProtocolImpl<T> implements StompMessagingProtocol<T> {
     private boolean shouldTerminate = false;
     private final Map<String, String> subscriptionIdToChannel = new HashMap<>();
 
-
-
-    /// heyyyyy shaked added this to check 
     @Override
     public void start(int connectionId, Connections<T> connections) {
         this.connectionId = connectionId;
@@ -152,7 +149,7 @@ public class StompProtocolImpl<T> implements StompMessagingProtocol<T> {
         shouldTerminate = true;
     }
 
-    ,
+    
 
     @Override
     public boolean shouldTerminate() {
