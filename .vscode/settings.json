@@ -63,5 +63,6 @@
         "variant": "cpp",
         "xstring": "cpp"
     },
-    "makefile.makefilePath": "client/"
+    "makefile.makefilePath": "client/",
+    "C_Cpp.errorSquiggles": "enabled"
 }

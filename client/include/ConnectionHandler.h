@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <boost/asio.hpp>
+#include Frame.h
 
 using boost::asio::ip::tcp;
 
