@@ -16,6 +16,9 @@ public class ConnectionsImpl<T> implements Connections<T> {
                                                                  // thsi
     private final ConcurrentMap<String, Integer> loggedInUsers; // Map of username -> connectionId
 
+    private final ConcurrentMap<String, User> alltimeUsers; // Persistent map of username -> User
+
+    
     private int messageIdCounter = 0; // Counter for unique message IDs
 
     public ConnectionsImpl() {
@@ -23,6 +26,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
         channels = new ConcurrentHashMap<>();
         userCredentials = new ConcurrentHashMap<>();
         loggedInUsers = new ConcurrentHashMap<>();
+        alltimeUsers = new  ConcurrentHashMap<>();
     }
 
     @Override
@@ -65,8 +69,27 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method for user login
     public void login(int connectionId, String username, String password) {
-        userCredentials.putIfAbsent(username, password); // Add new users
-        loggedInUsers.put(username, connectionId);
+        User user = alltimeUsers.computeIfAbsent(username, key -> new User(username, password)); // Retrieve or create user
+
+        if (!user.getPassword().equals(password)) {
+            throw new IllegalArgumentException("Invalid username or password");
+        }
+
+        if (user.isLoggedIn()) {
+            throw new IllegalStateException("User already logged in");
+        }
+
+        user.setLoggedIn(true); // Mark user as logged in
+        loggedInUsers.put(username, connectionId); // Associate user with connection ID
+        activeConnections.get(connectionId).setUser(user); // Associate user with the connection handler
+    }
+
+    public void logout(String username) {
+        User user = alltimeUsers.get(username);
+        if (user != null) {
+            user.setLoggedIn(false);
+            loggedInUsers.remove(username);
+        }
     }
 
     // Validate login credentials
@@ -91,7 +114,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method to subscribe a connection to a channel
     public void subscribe(String channel, int subscriptionId, int connectionId) {
-        Map<Integer, String> userChannels = (this.activeConnections.get(connectionId)).getUser().getChannels();
+        Map<Integer, String> userChannels = (this.activeConnections.get(connectionId)).getUser().getSubscriptions();
         userChannels.put(subscriptionId, channel);
         if (!this.channels.containsKey(channel)) {
             this.channels.put(channel, new CopyOnWriteArraySet());

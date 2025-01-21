@@ -16,7 +16,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedOutputStream out;
     private volatile boolean connected = true;
     //we added 
-    private final User user; // User associated with this connection
+    private User user; // User associated with this connection
 
     public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol,User user) {
         this.sock = sock;
@@ -69,6 +69,11 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     public User getUser() {
         return user;
     }
+    @Override
+    public void setUser(User user) {
+    this.user = user;
+}
+    
     
 
 }

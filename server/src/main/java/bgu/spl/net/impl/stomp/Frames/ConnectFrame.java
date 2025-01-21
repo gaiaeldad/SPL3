@@ -23,7 +23,7 @@ public class ConnectFrame extends Frame {
             loginSuccessful = false;
             String[] errorDetails = e.getMessage().split(":", 2);// allows separate the error type from the error
                                                                  // description
-            FrameHelper.handleError(
+            FrameHelper.ProcessError(
                     this,
                     errorDetails[0],
                     errorDetails[1],

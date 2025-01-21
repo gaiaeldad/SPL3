@@ -21,7 +21,7 @@ public class UnsubscribeFrame extends Frame {
             ShouldUnsubscribed = false;
             // Handle error by sending an ERROR frame to the client
             String[] errorDetails = e.getMessage().split(":", 2);
-            FrameHelper.handleError(
+            FrameHelper.ProcessError(
                     this,
                     errorDetails[0],
                     errorDetails[1],
