@@ -1,0 +1,37 @@
+#ifndef EMERGENCYEVENT_H
+#define EMERGENCYEVENT_H
+
+#include <string>
+#include <vector>
+#include <map>
+#include <mutex>
+#include "event.h"
+using namespace std;
+
+class EmergencyEvent : public Event {
+private:
+    string formatDateTime;
+    bool active;
+    bool forcesArrival;
+
+public:
+    EmergencyEvent(const Event& e);
+    bool operator<(const EmergencyEvent& other) const;
+    bool isFieldTrue(const string& fieldName) const;
+
+    // פונקציות גישה
+    const string& getFormatedDateTime() const;
+    const bool getActive() const;
+    const bool getForcesArrival() const;
+};
+
+// מפת סיכומים
+extern map<string, vector<EmergencyEvent>> eventSummaryMap;
+extern map<string, mutex> channelMutexes;
+
+// פונקציות נלוות
+void addToSummary(const Event& e);
+void ensureChannelMutexExists(const string& channelName);
+string formatToDateTime(const string& rawDateTime);
+
+#endif // EMERGENCYEVENT_H
