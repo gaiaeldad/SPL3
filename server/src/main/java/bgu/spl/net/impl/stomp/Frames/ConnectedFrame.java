@@ -4,9 +4,9 @@ import bgu.spl.net.srv.Connections;
 import java.util.Map;
 
 public class ConnectedFrame extends Frame {
-    public ConnectedFrame(String version, Connections<String> connections, int connectionId) {
-        super(Map.of("version", version), "", connections, connectionId);
-    }
+    ConnectedFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
+        super(headers, body, connections, connectionId);
+     }
 
     @Override
     public void process() {

@@ -58,11 +58,28 @@ public class UnsubscribeFrame extends Frame {
         }
     }
 
-    // Remove the subscription from the server for the given client and ID
-    private void performUnsubscription() {
-        int subscriptionId = Integer.parseInt(headers.get("id"));
-        connections.unsubscribe(subscriptionId, connectionId);
-    }
+  // Remove the subscription from the server for the given client and ID
+private void performUnsubscription() {
+    int subscriptionId = Integer.parseInt(headers.get("id"));
+
+    // Retrieve the channel associated with the subscriptionId
+    Map<Integer, String> userSubscriptions = connections.getHandler(connectionId).getUser().getChannels();
+    String channel = userSubscriptions.get(subscriptionId);
+
+    if (channel != null) {
+        // Remove the subscription from the user's subscriptions
+        userSubscriptions.remove(subscriptionId);
+
+        // Unsubscribe from the server
+        connections.unsubscribe(channel, connectionId);
+    
+} 
+    else {
+    System.out.println("Subscription ID not found for connection: " + connectionId);
+
+}
+}
+
 
     @Override
     public String getCommand() {

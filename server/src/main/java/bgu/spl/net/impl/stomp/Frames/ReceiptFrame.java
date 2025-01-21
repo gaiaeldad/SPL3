@@ -4,9 +4,9 @@ import bgu.spl.net.srv.Connections;
 import java.util.Map;
 
 public class ReceiptFrame extends Frame {
-    public ReceiptFrame(String receiptId, Connections<String> connections, int connectionId) {
-        super(Map.of("receipt-id", receiptId), "", connections, connectionId);
-    }
+    ReceiptFrame(String body, Map<String, String> headers, Connections<String> connections, int connectionId) {
+        super(headers, body, connections, connectionId);
+     }
 
     @Override
     public void process() {

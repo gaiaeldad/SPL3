@@ -64,20 +64,25 @@ public class SendFrame extends Frame {
         // Retrieve the list of connection IDs subscribed to the channel
         LinkedList<Integer> subscribers = connections
                 .getConnectionIdsOfChannel(headers.get("destination").substring(1));
-
-        // for each subscriber send the message
+    
+        // For each subscriber, send the message
         for (int subscriberId : subscribers) {
-            connections.send(
-                    subscriberId,
-                    new MessageFrame(
-                            headers.get("destination"), // Destination header
-                            String.valueOf(connections.getAndIncMsgIdCounter()), // Message ID
-                            String.valueOf(subscriberId), // Subscription ID (example logic, adjust as needed)
-                            body, // Message body
-                            connections,
-                            subscriberId).toString());
+            // Create headers for the MessageFrame
+            Map<String, String> messageHeaders = new ConcurrentHashMap<>();
+            messageHeaders.put("destination", headers.get("destination"));
+            messageHeaders.put("message-id", String.valueOf(connections.getAndIncMsgIdCounter()));
+            messageHeaders.put("subscription", String.valueOf(subscriberId));
+    
+            // Create and send the MessageFrame
+            String messageFrame = new MessageFrame(
+                    body, // Message body
+                    messageHeaders,
+                    connections,
+                    subscriberId
+            ).toString();
+    
+            connections.send(subscriberId, messageFrame);
         }
-
     }
 
     // Create headers for the forwarded message, including a unique "message-id"
