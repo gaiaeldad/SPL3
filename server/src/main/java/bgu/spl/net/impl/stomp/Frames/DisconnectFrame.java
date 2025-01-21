@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
@@ -6,7 +6,8 @@ import java.util.Map;
 
 public class DisconnectFrame extends Frame {
 
-    public DisconnectFrame( Map<String, String> headers, String body, Connections<String> connections, int connectionId) {
+    public DisconnectFrame(Map<String, String> headers, String body, Connections<String> connections,
+            int connectionId) {
         super(headers, body, connections, connectionId);
     }
 
@@ -21,12 +22,12 @@ public class DisconnectFrame extends Frame {
             // Handle error by sending an ERROR frame with the appropriate details
             String[] errorDetails = e.getMessage().split(":", 2);
             FrameHelper.handleError(
-                this,
-                errorDetails[0],
-                errorDetails[1],
-                connections,
-                connectionId,
-                headers.get("receipt") // Optional "receipt" header
+                    this,
+                    errorDetails[0],
+                    errorDetails[1],
+                    connections,
+                    connectionId,
+                    headers.get("receipt") // Optional "receipt" header
             );
         }
 
@@ -39,12 +40,13 @@ public class DisconnectFrame extends Frame {
             performDisconnection(); // Disconnect the client from the server
         }
     }
+
     // Validate the "receipt" header to ensure it is included in the frame
     private void validateReceipt() throws IOException {
-      if (!headers.containsKey("receipt")) {
-          throw new IOException("Missing Header:DISCONNECT frame must include the 'receipt' header.");
-      }
-  }
+        if (!headers.containsKey("receipt")) {
+            throw new IOException("Missing Header:DISCONNECT frame must include the 'receipt' header.");
+        }
+    }
 
     // Disconnect the client by invoking the appropriate method in Connections
     private void performDisconnection() {

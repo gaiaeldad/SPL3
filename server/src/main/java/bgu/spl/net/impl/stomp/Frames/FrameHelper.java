@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
@@ -11,7 +11,8 @@ public class FrameHelper {
    public static final Object HOST = "stomp.cs.bgu.ac.il";
 
    public static void sendReceiptFrame(String receiptId, Connections<String> connections, int connectionId) {
-      connections.send(connectionId, (new ReceiptFrame("", createReceiptHeaders(receiptId), connections, connectionId)).toString());
+      connections.send(connectionId,
+            (new ReceiptFrame("", createReceiptHeaders(receiptId), connections, connectionId)).toString());
    }
 
    private static Map<String, String> createReceiptHeaders(String receiptId) {
@@ -20,7 +21,8 @@ public class FrameHelper {
       return receiptHeaders;
    }
 
-   public static void handleError(Frame frameCausedErr, String errSummary, String errExplain, Connections<String> connections, int connectionId, String receiptId) {
+   public static void handleError(Frame frameCausedErr, String errSummary, String errExplain,
+         Connections<String> connections, int connectionId, String receiptId) {
       sendErrorFrame(frameCausedErr, errSummary, errExplain, connections, connectionId, receiptId);
       ConnectionHandler<String> handler = connections.getHandler(connectionId);
       connections.disconnect(connectionId);
@@ -33,8 +35,10 @@ public class FrameHelper {
 
    }
 
-   public static void sendErrorFrame(Frame frameCausedErr, String errHeader, String errExplain, Connections<String> connections, int connectionId, String receiptId) {
-      connections.send(connectionId, (new ErrorFrame(createErrBody(frameCausedErr, errExplain), createErrHeaders(receiptId, errHeader), connections, connectionId)).toString());
+   public static void sendErrorFrame(Frame frameCausedErr, String errHeader, String errExplain,
+         Connections<String> connections, int connectionId, String receiptId) {
+      connections.send(connectionId, (new ErrorFrame(createErrBody(frameCausedErr, errExplain),
+            createErrHeaders(receiptId, errHeader), connections, connectionId)).toString());
    }
 
    private static String createErrBody(Frame frameCausedErr, String errExplain) {
@@ -58,7 +62,8 @@ public class FrameHelper {
    }
 
    public static void sendConnectedFrame(String StompVersion, int connectionId, Connections<String> connections) {
-      connections.send(connectionId, (new ConnectedFrame("", createConnectedHeaders(StompVersion), connections, connectionId)).toString());
+      connections.send(connectionId,
+            (new ConnectedFrame("", createConnectedHeaders(StompVersion), connections, connectionId)).toString());
    }
 
    private static Map<String, String> createConnectedHeaders(String stompVersion) {
@@ -67,11 +72,14 @@ public class FrameHelper {
       return headers;
    }
 
-   public static void sendMessageFrame(String msg, String subscriptionId, String channelName, String messageId, int connectionId, Connections<String> connections) {
-      connections.send(connectionId, (new MessageFrame(msg, createMessageHeaders(subscriptionId, messageId, channelName), connections, connectionId)).toString());
+   public static void sendMessageFrame(String msg, String subscriptionId, String channelName, String messageId,
+         int connectionId, Connections<String> connections) {
+      connections.send(connectionId, (new MessageFrame(msg,
+            createMessageHeaders(subscriptionId, messageId, channelName), connections, connectionId)).toString());
    }
 
-   private static Map<String, String> createMessageHeaders(String subscriptionId, String messageId, String channelName) {
+   private static Map<String, String> createMessageHeaders(String subscriptionId, String messageId,
+         String channelName) {
       Map<String, String> headers = new ConcurrentHashMap();
       headers.put("subscription", subscriptionId);
       headers.put("message-id", messageId);
@@ -79,4 +87,3 @@ public class FrameHelper {
       return headers;
    }
 }
-    

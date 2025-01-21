@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import bgu.spl.net.api.MessageEncoderDecoder;
 
-
 //this looks good 
 public class StompEncDec implements MessageEncoderDecoder<String> {
 
@@ -27,7 +26,8 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
     }
 
     private String popString() {
-        // Convert the buffer to a String using UTF-8, reset the buffer, and return the message
+        // Convert the buffer to a String using UTF-8, reset the buffer, and return the
+        // message
         String result = new String(buffer, 0, length, StandardCharsets.UTF_8);
         length = 0; // Reset buffer
         return result;

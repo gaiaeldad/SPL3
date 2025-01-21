@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
@@ -6,7 +6,8 @@ import java.util.Map;
 
 public class UnsubscribeFrame extends Frame {
 
-    public UnsubscribeFrame( Map<String, String> headers, String body,Connections<String> connections, int connectionId) {
+    public UnsubscribeFrame(Map<String, String> headers, String body, Connections<String> connections,
+            int connectionId) {
         super(headers, body, connections, connectionId);
     }
 
@@ -17,17 +18,16 @@ public class UnsubscribeFrame extends Frame {
         try {
             validateId(); // Ensure the "id" header is present and valid
         } catch (IOException e) {
-         ShouldUnsubscribed = false;
+            ShouldUnsubscribed = false;
             // Handle error by sending an ERROR frame to the client
             String[] errorDetails = e.getMessage().split(":", 2);
             FrameHelper.handleError(
-                this,
-                errorDetails[0],
-                errorDetails[1],
-                connections,
-                connectionId,
-                headers.get("receipt") 
-            );
+                    this,
+                    errorDetails[0],
+                    errorDetails[1],
+                    connections,
+                    connectionId,
+                    headers.get("receipt"));
         }
 
         if (ShouldUnsubscribed) {
@@ -40,27 +40,30 @@ public class UnsubscribeFrame extends Frame {
         }
     }
 
-     // Validate the "id" header to ensure it exists and is associated with the client
-     private void validateId() throws IOException {
-      String id = headers.get("id");
+    // Validate the "id" header to ensure it exists and is associated with the
+    // client
+    private void validateId() throws IOException {
+        String id = headers.get("id");
 
-      if (id == null) {
-          throw new IOException("Missing Header:UNSUBSCRIBE frame must include the 'id' header.");
-      }
+        if (id == null) {
+            throw new IOException("Missing Header:UNSUBSCRIBE frame must include the 'id' header.");
+        }
 
-      int subscriptionId = Integer.parseInt(id);
+        int subscriptionId = Integer.parseInt(id);
 
-      // Check if the client is subscribed to the given subscription ID
-      if (!connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
-          throw new IOException("Invalid Subscription:You tried to unsubscribe from a subscription that does not exist.");
-      }
-  }
+        // Check if the client is subscribed to the given subscription ID
+        if (!connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
+            throw new IOException(
+                    "Invalid Subscription:You tried to unsubscribe from a subscription that does not exist.");
+        }
+    }
 
     // Remove the subscription from the server for the given client and ID
     private void performUnsubscription() {
         int subscriptionId = Integer.parseInt(headers.get("id"));
         connections.unsubscribe(subscriptionId, connectionId);
     }
+
     @Override
     public String getCommand() {
         return "UNSUBSCRIBE";

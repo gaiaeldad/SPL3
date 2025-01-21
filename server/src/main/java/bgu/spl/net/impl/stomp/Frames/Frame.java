@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.util.Iterator;
@@ -6,11 +6,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-
 //abstract frame class 
 
 public abstract class Frame {
-   protected final ConcurrentHashMap<String, String> headers;//thread safe 
+   protected final ConcurrentHashMap<String, String> headers;// thread safe
    protected final String body;
    protected final Connections<String> connections;
    protected final int connectionId;
@@ -24,15 +23,14 @@ public abstract class Frame {
 
    @Override
    public String toString() {
-       StringBuilder msg = new StringBuilder(getCommand()).append("\n");
+      StringBuilder msg = new StringBuilder(getCommand()).append("\n");
 
-       headers.forEach((key, value) -> msg.append(key).append(":").append(value).append("\n"));
+      headers.forEach((key, value) -> msg.append(key).append(":").append(value).append("\n"));
 
-       msg.append("\n").append(body);
-       
-       return msg.toString();
+      msg.append("\n").append(body);
+
+      return msg.toString();
    }
-   
 
    public abstract void process();
 

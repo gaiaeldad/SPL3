@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SendFrame extends Frame {
 
-    public SendFrame( Map<String, String> headers,String body, Connections<String> connections, int connectionId) {
+    public SendFrame(Map<String, String> headers, String body, Connections<String> connections, int connectionId) {
         super(headers, body, connections, connectionId);
     }
 
@@ -20,16 +20,16 @@ public class SendFrame extends Frame {
         try {
             validateDestination(); // Ensure the "destination" header is valid
         } catch (IOException e) {
-         sendMessage = false;
+            sendMessage = false;
             // Handle error by sending an ERROR frame
             String[] errorDetails = e.getMessage().split(":", 2);
             FrameHelper.handleError(
-                this,
-                errorDetails[0],
-                errorDetails[1],
-                connections,
-                connectionId,
-                headers.get("receipt") // Optional "receipt" header
+                    this,
+                    errorDetails[0],
+                    errorDetails[1],
+                    connections,
+                    connectionId,
+                    headers.get("receipt") // Optional "receipt" header
             );
         }
 
@@ -43,37 +43,41 @@ public class SendFrame extends Frame {
         }
     }
 
-     // Validate the "destination" header to ensure the channel exists and the user is subscribed
-     private void validateDestination() throws IOException {
-      String destination = headers.get("destination");
+    // Validate the "destination" header to ensure the channel exists and the user
+    // is subscribed
+    private void validateDestination() throws IOException {
+        String destination = headers.get("destination");
 
-      if (destination == null) {
-          throw new IOException("Missing Header:SEND frame must include the 'destination' header.");
-      }
+        if (destination == null) {
+            throw new IOException("Missing Header:SEND frame must include the 'destination' header.");
+        }
 
-      // Check if the channel exists and if the user is subscribed
-      if (!connections.isChannelAndSubscribe(destination.substring(1), connectionId)) {
-          throw new IOException("Invalid Channel:You tried to send a message to a channel that doesn't exist or you are not subscribed to.");
-      }
-  }
+        // Check if the channel exists and if the user is subscribed
+        if (!connections.isChannelAndSubscribe(destination.substring(1), connectionId)) {
+            throw new IOException(
+                    "Invalid Channel:You tried to send a message to a channel that doesn't exist or you are not subscribed to.");
+        }
+    }
 
     // Forward the message to all clients subscribed to the destination
     private void forwardMessage() {
         // Retrieve the list of connection IDs subscribed to the channel
-        LinkedList<Integer> subscribers = connections.getConnectionIdsOfChannel(headers.get("destination").substring(1));
+        LinkedList<Integer> subscribers = connections
+                .getConnectionIdsOfChannel(headers.get("destination").substring(1));
 
-        //  for each subscriber send the message
+        // for each subscriber send the message
         for (int subscriberId : subscribers) {
             connections.send(
-                subscriberId,
-                new MessageFrame(
-                    body, // Message body
-                    createMessageHeaders(connections.getAndIncMsgIdCounter()), // Headers for the message
-                    connections,
-                    subscriberId
-                ).toString()
-            );
+                    subscriberId,
+                    new MessageFrame(
+                            headers.get("destination"), // Destination header
+                            String.valueOf(connections.getAndIncMsgIdCounter()), // Message ID
+                            String.valueOf(subscriberId), // Subscription ID (example logic, adjust as needed)
+                            body, // Message body
+                            connections,
+                            subscriberId).toString());
         }
+
     }
 
     // Create headers for the forwarded message, including a unique "message-id"

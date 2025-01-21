@@ -1,5 +1,7 @@
 package bgu.spl.net.srv;
 
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -10,10 +12,17 @@ public class ConnectionsImpl<T> implements Connections<T> {
                                                                                   // ConnectionHandler
     private final ConcurrentMap<String, CopyOnWriteArraySet<Integer>> channels; // Map of channel -> Set of
                                                                                 // connectionIds
+    private final ConcurrentMap<String, String> userCredentials; // Map of username -> password////not sure if we need
+                                                                 // thsi
+    private final ConcurrentMap<String, Integer> loggedInUsers; // Map of username -> connectionId
+
+    private int messageIdCounter = 0; // Counter for unique message IDs
 
     public ConnectionsImpl() {
         activeConnections = new ConcurrentHashMap<>();
         channels = new ConcurrentHashMap<>();
+        userCredentials = new ConcurrentHashMap<>();
+        loggedInUsers = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -38,6 +47,10 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     @Override
     public void disconnect(int connectionId) {
+        String username = getUsernameByConnectionId(connectionId);
+        if (username != null) {
+            loggedInUsers.remove(username);
+        }
         activeConnections.remove(connectionId); // Remove the client from active connections
         // Remove the client from all channels
         for (CopyOnWriteArraySet<Integer> subscribers : channels.values()) {
@@ -45,15 +58,46 @@ public class ConnectionsImpl<T> implements Connections<T> {
         }
     }
 
-    // Helper method to add a connection
+    @Override
     public void addConnection(int connectionId, ConnectionHandler<T> handler) {
         activeConnections.put(connectionId, handler);
     }
 
+    // Helper method for user login
+    public void login(int connectionId, String username, String password) {
+        userCredentials.putIfAbsent(username, password); // Add new users
+        loggedInUsers.put(username, connectionId);
+    }
+
+    // Validate login credentials
+    public boolean isLegalLoginInfo(String username, String password) {
+        return userCredentials.containsKey(username) && userCredentials.get(username).equals(password);
+    }
+
+    // Check if a user is already logged in
+    public boolean isUserLogedIn(String username) {
+        return loggedInUsers.containsKey(username);
+    }
+
+    // Get username by connectionId
+    private String getUsernameByConnectionId(int connectionId) {
+        return loggedInUsers.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().equals(connectionId))
+                .map(entry -> entry.getKey())
+                .findFirst()
+                .orElse(null);
+    }
+
     // Helper method to subscribe a connection to a channel
-    public void subscribe(String channel, int connectionId) {
-        channels.putIfAbsent(channel, new CopyOnWriteArraySet<>());
-        channels.get(channel).add(connectionId);
+    public void subscribe(String channel, int subscriptionId, int connectionId) {
+        Map<Integer, String> userChannels = (this.activeConnections.get(connectionId)).getUser().getChannels();
+        userChannels.put(subscriptionId, channel);
+        if (!this.channels.containsKey(channel)) {
+            this.channels.put(channel, new CopyOnWriteArraySet());
+        }
+
+        (this.channels.get(channel)).add(connectionId);
     }
 
     // Helper method to unsubscribe a connection from a channel
@@ -63,4 +107,30 @@ public class ConnectionsImpl<T> implements Connections<T> {
             subscribers.remove(connectionId);
         }
     }
+
+    public boolean isChannelAndSubscribe(String channel, int connectionId) {
+        CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
+        return subscribers != null && subscribers.contains(connectionId);
+    }
+
+    // Retrieve connection IDs of a specific channel
+    public LinkedList<Integer> getConnectionIdsOfChannel(String channel) {
+        LinkedList<Integer> connectionIds = new LinkedList<>();
+        CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
+        if (subscribers != null) {
+            connectionIds.addAll(subscribers);
+        }
+        return connectionIds;
+    }
+
+    // Increment and retrieve the message ID counter
+    public synchronized int getAndIncMsgIdCounter() {
+        return messageIdCounter++;
+    }
+
+    // Get the handler for a specific connection ID
+    public ConnectionHandler<T> getHandler(int connectionId) {
+        return activeConnections.get(connectionId);
+    }
+
 }

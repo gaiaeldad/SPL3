@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
@@ -22,12 +22,12 @@ public class SubscribeFrame extends Frame {
             // Handle error by sending an ERROR frame with appropriate details
             String[] errorDetails = e.getMessage().split(":", 2);
             FrameHelper.handleError(
-                this,
-                errorDetails[0],
-                errorDetails[1],
-                connections,
-                connectionId,
-                headers.get("receipt") // Optional "receipt" header
+                    this,
+                    errorDetails[0],
+                    errorDetails[1],
+                    connections,
+                    connectionId,
+                    headers.get("receipt") // Optional "receipt" header
             );
         }
 
@@ -40,7 +40,6 @@ public class SubscribeFrame extends Frame {
         }
     }
 
-   
     // Validate the "id" header to ensure it exists and is unique for the client
     private void validateSubscriptionId() throws IOException {
         String id = headers.get("id");
@@ -52,7 +51,8 @@ public class SubscribeFrame extends Frame {
         int subscriptionId = Integer.parseInt(id);
 
         if (connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
-            throw new IOException("Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
+            throw new IOException(
+                    "Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
         }
     }
 
@@ -65,12 +65,11 @@ public class SubscribeFrame extends Frame {
 
     // Add the subscription for the client to the specified destination
     private void performSubscription() {
-      connections.subscribe(
-          headers.get("destination"),
-          Integer.parseInt(headers.get("id")),
-          connectionId
-      );
-  }
+        connections.subscribe(
+                headers.get("destination"),
+                Integer.parseInt(headers.get("id")),
+                connectionId);
+    }
 
     @Override
     public String getCommand() {

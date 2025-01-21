@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.stomp.Frames;
+package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
 import java.io.IOException;
@@ -16,25 +16,28 @@ public class ConnectFrame extends Frame {
 
         try {
             validateAcceptVersion(); // Validate the "accept-version" header
-            validateHost();          // Validate the "host" header
-            validateCredentials();   // Validate "login" and "passcode" headers
+            validateHost(); // Validate the "host" header
+            validateCredentials(); // Validate "login" and "passcode" headers
         } catch (IOException e) {
             // If validation fails, handle the error and stop further processing
             loginSuccessful = false;
-            String[] errorDetails = e.getMessage().split(":", 2);//allows separate the error type from the error description
+            String[] errorDetails = e.getMessage().split(":", 2);// allows separate the error type from the error
+                                                                 // description
             FrameHelper.handleError(
-                this,
-                errorDetails[0],
-                errorDetails[1],
-                connections,
-                connectionId,
-                headers.get("receipt") // Use the "receipt" header if present
+                    this,
+                    errorDetails[0],
+                    errorDetails[1],
+                    connections,
+                    connectionId,
+                    headers.get("receipt") // Use the "receipt" header if present
             );
         }
 
         if (loginSuccessful) {
             performLogin(); // Log the user in
-            FrameHelper.sendConnectedFrame(headers.get("accept-version"), connectionId, connections); // Send "CONNECTED" frame
+            FrameHelper.sendConnectedFrame(headers.get("accept-version"), connectionId, connections); // Send
+                                                                                                      // "CONNECTED"
+                                                                                                      // frame
 
             // If a "receipt" header is provided, send a "RECEIPT" frame
             if (headers.containsKey("receipt")) {
@@ -43,7 +46,6 @@ public class ConnectFrame extends Frame {
         }
     }
 
-    
     // Validate the "accept-version" header to ensure it is set to "1.2"
     private void validateAcceptVersion() throws IOException {
         String acceptVersion = headers.get("accept-version");
@@ -55,7 +57,6 @@ public class ConnectFrame extends Frame {
         }
     }
 
-    
     // Validate the "host" header to ensure it matches the expected host
     private void validateHost() throws IOException {
         String host = headers.get("host");
@@ -67,13 +68,15 @@ public class ConnectFrame extends Frame {
         }
     }
 
-    // Validate the "login" and "passcode" headers and check if the user is allowed to log in
+    // Validate the "login" and "passcode" headers and check if the user is allowed
+    // to log in
     private void validateCredentials() throws IOException {
         String login = headers.get("login");
         String passcode = headers.get("passcode");
 
         if (login == null || passcode == null) {
-            throw new IOException("Missing Credentials:CONNECT frame must include both 'login' and 'passcode' headers.");
+            throw new IOException(
+                    "Missing Credentials:CONNECT frame must include both 'login' and 'passcode' headers.");
         }
 
         if (!isValidLogin(login, passcode)) {

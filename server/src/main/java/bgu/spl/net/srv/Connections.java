@@ -1,6 +1,6 @@
 package bgu.spl.net.srv;
 
-import java.io.IOException;
+import java.util.LinkedList;
 
 public interface Connections<T> {
 
@@ -10,7 +10,25 @@ public interface Connections<T> {
 
     void disconnect(int connectionId);
 
-    // we added this
     void addConnection(int connectionId, ConnectionHandler<T> handler);
 
+    // Added methods for user management
+    void login(int connectionId, String username, String password);
+
+    boolean isLegalLoginInfo(String username, String password);
+
+    boolean isUserLogedIn(String username);
+
+    void subscribe(String channel, int subscriptionId, int connectionId);
+
+    void unsubscribe(String channel, int connectionId);
+
+    // Added methods for message and channel management
+    boolean isChannelAndSubscribe(String channel, int connectionId);
+
+    LinkedList<Integer> getConnectionIdsOfChannel(String channel);
+
+    int getAndIncMsgIdCounter();
+
+    ConnectionHandler<T> getHandler(int connectionId);
 }
