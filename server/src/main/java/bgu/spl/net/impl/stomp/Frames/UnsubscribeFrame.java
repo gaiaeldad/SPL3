@@ -52,7 +52,7 @@ public class UnsubscribeFrame extends Frame {
         int subscriptionId = Integer.parseInt(id);
 
         // Check if the client is subscribed to the given subscription ID
-        if (!connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
+        if (!connections.getHandler(connectionId).getUser().getSubscriptions().containsKey(subscriptionId)) {
             throw new IOException(
                     "Invalid Subscription:You tried to unsubscribe from a subscription that does not exist.");
         }
@@ -63,7 +63,7 @@ private void performUnsubscription() {
     int subscriptionId = Integer.parseInt(headers.get("id"));
 
     // Retrieve the channel associated with the subscriptionId
-    Map<Integer, String> userSubscriptions = connections.getHandler(connectionId).getUser().getChannels();
+    Map<Integer, String> userSubscriptions = connections.getHandler(connectionId).getUser().getSubscriptions();
     String channel = userSubscriptions.get(subscriptionId);
 
     if (channel != null) {

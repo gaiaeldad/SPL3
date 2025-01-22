@@ -8,7 +8,7 @@ import bgu.spl.net.srv.Connections;
 //////this is the new version 20.1 16:37 
 /// also not sure under what folder it should be 
 /// 
-public class StompMessageProtoclImpl <T> implements MessagingProtocol<T> {
+public class StompMessageProtoclImpl<T> implements MessagingProtocol<T> {
    private boolean shouldTerminate = false;
    private Integer connectionId;
    private Connections<String> connections;
@@ -18,7 +18,7 @@ public class StompMessageProtoclImpl <T> implements MessagingProtocol<T> {
       this.connections = (Connections<String>) connections;
    }
 
-   public void process(String msg) {// we need to add the parser 
+   public void process(T msg) {// we need to add the parser 
       Frame frame = FrameParser.Parse(msg, this.connections, this.connectionId);//check what is the frame type 
       frame.process();//process by the frame type 
    }

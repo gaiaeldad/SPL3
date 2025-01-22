@@ -50,7 +50,7 @@ public class SubscribeFrame extends Frame {
 
         int subscriptionId = Integer.parseInt(id);
 
-        if (connections.getHandler(connectionId).getUser().getChannels().containsKey(subscriptionId)) {
+        if (connections.getHandler(connectionId).getUser().getSubscriptions().containsKey(subscriptionId)) {
             throw new IOException(
                     "Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
         }

@@ -20,7 +20,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     private final Queue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<>();
     private final SocketChannel chan;
     private final Reactor reactor;
-    private final User user;
+    private User user;
 
     public NonBlockingConnectionHandler(
             MessageEncoderDecoder<T> reader,
@@ -52,7 +52,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                     while (buf.hasRemaining()) {
                         T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
-                            T response = protocol.process(nextMessage);
+                            T response = protocol.process(nextMessage);///לשנות את זה פה כמו שעשיתי עם שני 
                             if (response != null) {
                                 writeQueue.add(ByteBuffer.wrap(encdec.encode(response)));
                                 reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
@@ -119,13 +119,35 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
         BUFFER_POOL.add(buff);
     }
 
-    @Override
+
+    //unlike the blocking can write firectly to the output stream 
+    //need to use a buffer to manage the I\O
+    
+     @Override
     public void send(T msg) {
-        //IMPLEMENT IF NEEDED
-    }
+    // Encode the message converts the message into a byte[]
+    byte[] encodedMessage = encdec.encode(msg);
+
+    // Wrap the encoded message in a ByteBuffer that will be written to the channel.
+    ByteBuffer buffer = ByteBuffer.wrap(encodedMessage);
+
+    // Add the buffer to the write queue ensures messages are written in order and without blocking.
+    writeQueue.add(buffer);
+
+    // Register the channel for write operations
+    //notifies the reactor to process this channel for write operations during the next event loop.
+    reactor.updateInterestedOps(chan, SelectionKey.OP_WRITE);
+}
+
+    
 
     @Override
     public User getUser() {
         return user; // Return the associated user
     }
+
+    @Override
+    public void setUser(User user) {
+    this.user = user;
+}
 }

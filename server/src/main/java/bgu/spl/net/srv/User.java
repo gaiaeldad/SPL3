@@ -27,6 +27,7 @@ public class User {
         return password;
     }
 
+
     // Check if the user is logged in
     public boolean isLoggedIn() {
         return isLoggedIn;
@@ -56,4 +57,6 @@ public class User {
     public String getChannelBySubscriptionId(int subscriptionId) {
         return subscriptions.get(subscriptionId);
     }
+    
+
 }

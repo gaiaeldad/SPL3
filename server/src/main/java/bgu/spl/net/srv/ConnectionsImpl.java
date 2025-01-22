@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectionsImpl<T> implements Connections<T> {
 
@@ -20,6 +21,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     
     private int messageIdCounter = 0; // Counter for unique message IDs
+   
 
     public ConnectionsImpl() {
         activeConnections = new ConcurrentHashMap<>();
@@ -30,16 +32,18 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     @Override
+    //sends to a specific client 
     public boolean send(int connectionId, T msg) {
         ConnectionHandler<T> handler = activeConnections.get(connectionId);
         if (handler != null) {
             handler.send(msg);
             return true;
         }
-        return false; // Client not found
+        return false; 
     }
 
     @Override
+    //sends to clients subscribed to the channel 
     public void send(String channel, T msg) {
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
         if (subscribers != null) {
@@ -63,8 +67,9 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     @Override
-    public void addConnection(int connectionId, ConnectionHandler<T> handler) {
-        activeConnections.put(connectionId, handler);
+    //changed this for the ides also chnages the interface 
+    public void addConnection(int id,ConnectionHandler<T> handler) {
+        activeConnections.put(id, handler);
     }
 
     // Helper method for user login

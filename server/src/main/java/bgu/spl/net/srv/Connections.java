@@ -10,7 +10,8 @@ public interface Connections<T> {
 
     void disconnect(int connectionId);
 
-    void addConnection(int connectionId, ConnectionHandler<T> handler);
+    //changed again 
+    void addConnection(int id,ConnectionHandler<T> handler);
 
     // Added methods for user management
     void login(int connectionId, String username, String password);
