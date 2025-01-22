@@ -1,4 +1,3 @@
-
 #include "../include/ConnectionHandler.h"
 
 using boost::asio::ip::tcp;
@@ -93,7 +92,7 @@ bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {
 	return true;
 }
 
-bool ConnectionHandler::getFrame(Frame &frame) {
+bool ConnectionHandler::getFrame(Frame &frame) {//our method
     std::string rawFrame;
     if (!getFrameAscii(rawFrame, '\0')) {
         return false; // כישלון בקריאה מהסוקט
@@ -108,7 +107,6 @@ bool ConnectionHandler::getFrame(Frame &frame) {
 
     return true;
 }
-
 
 bool ConnectionHandler::sendFrameAscii(const std::string &frame, char delimiter) {
 	bool result = sendBytes(frame.c_str(), frame.length());

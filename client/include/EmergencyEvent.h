@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <memory>
 #include "event.h"
 using namespace std;
 
@@ -26,11 +27,11 @@ public:
 };
 
 // מפת סיכומים
-extern map<string, vector<EmergencyEvent>> eventSummaryMap;
-extern map<string, mutex> channelMutexes;
+extern map<string, map<string, vector<EmergencyEvent>>> eventSummaryMap;
+extern map<string, shared_ptr<mutex>> channelMutexes;
 
 // פונקציות נלוות
-void addToSummary(const Event& e);
+void addToSummary(const Event& e, const string& username);
 void ensureChannelMutexExists(const string& channelName);
 string formatToDateTime(const string& rawDateTime);
 

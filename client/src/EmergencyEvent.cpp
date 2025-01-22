@@ -12,13 +12,13 @@ using namespace std;
 
 
 // מפת הסיכומים לפי ערוצים
-map<string, vector<EmergencyEvent>> eventSummaryMap;
+map<string, map<string, vector<EmergencyEvent>>> eventSummaryMap;
+map<string, shared_ptr<mutex>> channelMutexes;
 
-EmergencyEvent::EmergencyEvent(const Event& e) : Event(e) {
+EmergencyEvent::EmergencyEvent(const Event& e) : Event(e), formatDateTime(""), active(false), forcesArrival (false) {
     this->formatDateTime = formatToDateTime(to_string(e.get_date_time()));
-    //------------לוודא שמאוית נכון---------------
     this->active = isFieldTrue ("active");
-    this->forcesArrival = isFieldTrue ("forces arrival at scene");
+    this->forcesArrival = isFieldTrue ("forces_arrival_at_scene");
 }
 
 
@@ -31,54 +31,58 @@ bool EmergencyEvent::operator<(const EmergencyEvent& other) const {
 }
 
 // פונקציה להוספת אירוע לערוץ בסיכום
-void addToSummary(const Event& e) {
+void addToSummary(const Event& e, const string& username) {
     // וודא שלערוץ יש מנעול
     ensureChannelMutexExists(e.get_channel_name());
 
     // נעילת המנעול של הערוץ המסוים
-    std::lock_guard<std::mutex> lock(channelMutexes[e.get_channel_name()]); 
+    lock_guard<mutex> lock(*channelMutexes[e.get_channel_name()]);
 
     // יצירת האירוע
     EmergencyEvent eventSummary(e);
 
-    // הוספת האירוע לערוץ המתאים במפה
-    eventSummaryMap[e.get_channel_name()].push_back(eventSummary);
+    // הוספת האירוע לערוץ ולמשתמש המתאים
+    eventSummaryMap[e.get_channel_name()][username].push_back(eventSummary);
 
-    // מיון האירועים בערוץ
-    std::sort(eventSummaryMap[eventSummary.get_channel_name()].begin(), eventSummaryMap[eventSummary.get_channel_name()].end());
+    // מיון האירועים של המשתמש בתוך הערוץ
+    sort(eventSummaryMap[e.get_channel_name()][username].begin(),
+         eventSummaryMap[e.get_channel_name()][username].end());
 }
 
-void ensureChannelMutexExists(const std::string& channelName) {
-    static std::mutex mutexForMutexes; // מנעול להגנה על map המנעולים
-    std::lock_guard<std::mutex> lock(mutexForMutexes);
+
+void ensureChannelMutexExists(const string& channelName) {
+    static mutex mutexForMutexes; // מנעול להגנה על map המנעולים
+    lock_guard<mutex> lock(mutexForMutexes);
 
     if (channelMutexes.find(channelName) == channelMutexes.end()) {
-        channelMutexes.emplace(channelName, std::mutex());
+        channelMutexes.emplace(channelName, make_shared<mutex>());
     }
 }
 
+
 // פונקציה להמרת תאריך לפורמט הנדרש
-string formatToDateTime(const std::string& rawDateTime) {
-    std::istringstream input(rawDateTime);
-    std::ostringstream output;
+string formatToDateTime(const string& rawDateTime) {
+    istringstream input(rawDateTime);
+    ostringstream output;
     int year, month, day, hour, minute, second;
     char dash1, dash2, space, colon1, colon2;
 
     input >> year >> dash1 >> month >> dash2 >> day >> space >> hour >> colon1 >> minute >> colon2 >> second;
     if (input.fail()) {
-        throw std::invalid_argument("Invalid date format");
+        cerr << "Invalid date format" << endl;
+        return "-1";
     }
 
-    output << std::setfill('0') << std::setw(2) << day << "/"
-           << std::setw(2) << month << "/"
+    output << setfill('0') << setw(2) << day << "/"
+           << setw(2) << month << "/"
            << year << " "
-           << std::setw(2) << hour << ":"
-           << std::setw(2) << minute;
+           << setw(2) << hour << ":"
+           << setw(2) << minute;
 
     return output.str();
 }
 
-bool EmergencyEvent::isFieldTrue(const std::string& fieldName) const {
+bool EmergencyEvent::isFieldTrue(const string& fieldName) const {
     // אחזור על המידע הכללי
     const auto& generalInfo = get_general_information();
     auto it = generalInfo.find(fieldName);
@@ -86,23 +90,25 @@ bool EmergencyEvent::isFieldTrue(const std::string& fieldName) const {
     // בדיקה אם השדה קיים
     if (it != generalInfo.end()) {
         // הפיכת הערך ל-lowercase
-        std::string value = it->second;
-        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        string value = it->second;
+        transform(value.begin(), value.end(), value.begin(), ::tolower);
 
         // החזרה אם הערך הוא "true"
         return value == "true";
     }
 
     // אם השדה לא נמצא
+    cout << fieldName << " not found!" << endl;
     return false;
 }
 
 
 
 // פונקציות גישה
-const std::string& EmergencyEvent::getFormatedDateTime() const {
+const string& EmergencyEvent::getFormatedDateTime() const {
     return this->formatDateTime; 
 }
 
 const bool EmergencyEvent:: getActive() const {return this->active;}
 const bool EmergencyEvent:: getForcesArrival() const {return this->forcesArrival;}
+
