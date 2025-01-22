@@ -11,6 +11,7 @@
 #include "Frame.h"
 #include "EmergencyEvent.h" // כולל את מבנה הסיכום ואת הפונקציות הרלוונטיות
 #include <event.h>
+#include <queue>
 
 using namespace std;
 
@@ -21,17 +22,16 @@ private:
     bool connected;
     int nextSubscriptionId;
     int nextReceiptId;
+    int receiptDisconnect = -1;
     map<string, int> topicToSubscriptionId;
+    map<int, bool> gotReceipt;
     map<int, string> receiptCallbacks;
-    map<string, vector<EmergencyEvent>> eventSummaryMap;
+    map<string, map<string, vector<EmergencyEvent>>> eventSummaryMap;
     mutex eventSummaryMapMutex;
-    mutex topicToSubscriptionIdMutex;
-    mutex receiptCallbacksMutex;
     thread readThread;//from the server
     thread keyboardThread;//from the user 
     bool shouldTerminate;
-    bool isRunning;
-    
+    bool isRunning; 
 
 
 public:
@@ -80,6 +80,7 @@ public:
         }
         topicToSubscriptionId.clear();
         isRunning = false; // עדכון שהלקוח נעצר
+        cout << "Logged out successfully." << endl;
         cout << "Client stopped." << endl;
     }
 
@@ -89,7 +90,7 @@ private:
         while (!shouldTerminate) {
             string line;
             getline(cin, line);
-
+            Frame frame;
             vector<string> tokens = splitString(line, ' ');
             if (tokens.empty()) continue;
 
@@ -99,27 +100,27 @@ private:
                         cout << "Usage: login <host:port> <username> <password>" << endl;
                         continue;
                     }
-                    handleLogin(tokens[1], tokens[2], tokens[3]);
+                    frame = handleLogin(tokens[1], tokens[2], tokens[3]);
                 } else if (tokens[0] == "join") {
                     if (tokens.size() != 2) {
                         cout << "Usage: join <topic>" << endl;
                         continue;
                     }
-                    handleJoin(tokens[1]);
+                    frame = handleJoin(tokens[1]);
                 } else if (tokens[0] == "exit") {
                     if (tokens.size() != 2) {
                         cout << "Usage: exit <topic>" << endl;
                         continue;
                     }
-                    handleExit(tokens[1]);
+                    frame = handleExit(tokens[1]);
                 } else if (tokens[0] == "report") {
                     if (tokens.size() != 2) {
                         cout << "Usage: report <file>" << endl;
                         continue;
                     }
-                    handleReport(tokens[1]);
+                    frame = handleReport(tokens[1]);
                 } else if (tokens[0] == "logout") {
-                    handleLogout();
+                    frame = handleLogout();
                 }else if (tokens[0] == "summary") {
                     if (tokens.size() != 4) {
                         cout << "Usage: report <file>" << endl;
@@ -129,13 +130,19 @@ private:
                 } else {
                     cout << "Unknown command" << endl;
                 }
+                {
+                    if(!frame.command.empty()){
+                        sendFrame(frame);
+                    }
+                }
+
             } catch (const exception& e) {
                 cerr << "Error: " << e.what() << endl;
             }
         }
     }
 
-    void handleLogin(const std::string& hostPort, const std::string& username, const std::string& password) {
+    Frame handleLogin(const std::string& hostPort, const std::string& username, const std::string& password) {
         if (connected) {
             std::cerr << "The client is already logged in, log out before trying again." << std::endl;
             return;
@@ -162,40 +169,12 @@ private:
         frame.headers["login"] = username;
         frame.headers["passcode"] = password;
 
-        // Send the frame
-        sendFrame(frame);
-
-        // Wait for a response from the server
-        Frame response;
-        if (!connectionHandler.getFrame(response)) {
-            std::cerr << "Failed to receive response from server during login" << std::endl;
-            connectionHandler.close();
-            return;
-        }
-
-        // Process the response
-        if (response.command == "CONNECTED") {
-            connected = true;
-            this->username = username;
-            std::cout << "Login successful" << std::endl;
-        } else if (response.command == "ERROR") {
-            std::string errorMessage = response.headers["message"];
-            if (errorMessage == "User already logged in") {
-                std::cerr << "User already logged in." << std::endl;
-            } else if (errorMessage == "Wrong password") {
-                std::cerr << "Wrong password." << std::endl;
-            } else {
-                std::cerr << "Login failed: " << errorMessage << std::endl;
-            }
-            connectionHandler.close();
-        } else {
-            std::cerr << "Unexpected response during login: " << response.command << std::endl;
-            connectionHandler.close();
-        }
+        this->username = username;
+        return frame;
     }
 
 
-    void handleJoin(const string& topic) {
+    Frame handleJoin(const string& topic) {
         if (!connected){
             cout << "the user is not logged in, can't join: " << topic << endl;
             return;
@@ -211,26 +190,16 @@ private:
         frame.headers["receipt"] = to_string(nextReceiptId);
         // עדכון המפה עם המנוי החדש
         topicToSubscriptionId[topic] = nextSubscriptionId;
+        gotReceipt[nextReceiptId] = false;
         // עדכון הקלטות לקבלות
         receiptCallbacks[nextReceiptId] = "Joined topic: " + topic;
-        // שליחת פריים
-        sendFrame(frame);
         nextSubscriptionId++;
         nextReceiptId++;
-        Frame response;
-        if (!connectionHandler.getFrame(response)) {
-            cerr << "Failed to receive response from server during Exit" << endl;
-            return;
-        }
-        if (isReceiptValid(response, nextReceiptId -1)){
-            cout << "Joined topic: " << topic << endl;        }
-        else{
-            cout << "the frame recived is not correct!" << endl;
-        }
+        return frame;
         
     }
 
-    void handleExit(const string& topic) {
+    Frame handleExit(const string& topic) {
         if (!connected){
             cout << "the user is not logged in, can't Exit: " << topic << endl;
             return;
@@ -245,24 +214,13 @@ private:
         frame.command = "UNSUBSCRIBE";
         frame.headers["id"] = to_string(subscriptionId);
         frame.headers["receipt"] = to_string(nextReceiptId);
-
+        gotReceipt[nextReceiptId] = false;
         receiptCallbacks[nextReceiptId++] = "Exited topic: " + topic;
-        sendFrame(frame);
         topicToSubscriptionId.erase(topic);
-        Frame response;
-        if (!connectionHandler.getFrame(response)) {
-            cerr << "Failed to receive response from server during Exit" << endl;
-            return;
-        }
-        if (isReceiptValid(response, nextReceiptId -1)){
-            cout << "Exited topic: " << topic << endl;
-        }
-        else{
-            cout << "the frame recived is not correct!" << endl;
-        }
+        return frame;
     }
 
-    void handleReport(const std::string& file) {
+    Frame handleReport(const std::string& file) {
         if (!connected){
             cout << "the user is not logged in, can't report! "  << endl;
             return;
@@ -287,7 +245,7 @@ private:
         for (auto& event : parsedData.events) {
             try {
                 // הוספת האירוע לערוץ בסיכום
-                addToSummary(event);
+                addToSummary(event, this->username);
                 event.setEventOwnerUser (this->username);
 
                 // יצירת פריים ושליחתו לשרת
@@ -306,18 +264,18 @@ private:
                 }       
                 body << "description: " << event.get_description() << "\n";
                 frame.body = body.str();
-                sendFrame(frame);
-
                 std::cout << "Event reported: " << event.get_name() << " to channel: " << channelName << std::endl;
+                std::cout << "Report summary updated from file: " << file << std::endl;
+                return frame;
+
             } catch (const std::exception& e) {
                 std::cerr << "Error processing event: " << e.what() << std::endl;
             }
         }
 
-        std::cout << "Report summary updated from file: " << file << std::endl;
     }
 
-    void handleLogout() {
+    Frame handleLogout() {
         if (!connected) {
             cerr << "Error: Not connected to the server." << endl;
             return;
@@ -325,26 +283,16 @@ private:
         Frame frame;
         frame.command = "DISCONNECT";
         frame.headers["receipt"] = to_string(nextReceiptId);
+        receiptDisconnect = nextReceiptId;
+        gotReceipt[nextReceiptId] = false;
         receiptCallbacks[nextReceiptId++] = "logout: " + username;
-        sendFrame(frame);
-        Frame response;
-        if (!connectionHandler.getFrame(response)) {
-            cerr << "Failed to receive response from server during Exit" << endl;
-            return;
-        }
-        if (isReceiptValid(response, nextReceiptId -1)){
-            stop();
-            cout << "Logged out successfully." << endl; 
-            //-----------מזה לחכות לפקודות נוספות--------
-        }
-        else{
-            cout << "the frame recived is not correct, cant log out" << endl;
-        }
+        return frame;
     }
 
     void sendFrame(const Frame& frame) {
         string frameStr = frame.toString();
         if (!connectionHandler.sendFrameAscii(frameStr, '\0')) {
+            connectionHandler.close();
             cerr << "Failed to send frame: " << frame.command << endl;
         }
     }
@@ -354,6 +302,15 @@ private:
             return;
         }
         lock_guard<std::mutex> lock(eventSummaryMapMutex); // מנעול לוודא גישה בטוחה למפה
+        if (eventSummaryMap.find(channel_name) == eventSummaryMap.end()) {
+            cerr << "Error: Channel " << channel_name << " not found." << endl;
+            return;
+        }
+
+        if (eventSummaryMap[channel_name].find(user) == eventSummaryMap[channel_name].end()) {
+            cerr << "Error: User " << user << " not found in channel " << channel_name << "." << endl;
+            return;
+        }
         ofstream outFile(file, ios::trunc); // פתיחת קובץ חדש (trunc = למחוק תוכן קודם אם קיים)
         if (!outFile.is_open()) {
             cerr << "Error: Failed to create or open file: " << file << endl;
@@ -363,29 +320,25 @@ private:
         int i = 1;
         int active = 0;
         int forcesArrival = 0;
-        vector<EmergencyEvent> channelEvents = eventSummaryMap[channel_name];
+        const vector<EmergencyEvent>& userEvents = eventSummaryMap[channel_name][user];
         
         // צבירת תוכן האירועים במשתנה צדדי
         stringstream eventDetails;
 
-        for (auto& event : channelEvents) {
-            if (event.getEventOwnerUser() == user) {
-                eventDetails << "Report_" << i << "\n";
-                eventDetails << "\tcity: " << event.get_city() << "\n";
-                eventDetails << "\tdate time: " << event.getFormatedDateTime() << "\n";
-                eventDetails << "\tevent name: " << event.get_name() << "\n";
-
-                string description = event.get_description();
-                if (description.length() > 30) {
-                    description = description.substr(0, 27) + "...";
-                }
-                eventDetails << "\tsummary: " << description << "\n";
-                eventDetails << endl;
-
-                if (event.getActive()) { active++; }
-                if (event.getForcesArrival()) { forcesArrival++; }
-                i++;
+        for (auto& event : userEvents) {
+            eventDetails << "Report_" << i << "\n";
+            eventDetails << "\tcity: " << event.get_city() << "\n";
+            eventDetails << "\tdate time: " << event.getFormatedDateTime() << "\n";
+            eventDetails << "\tevent name: " << event.get_name() << "\n";
+            string description = event.get_description();
+            if (description.length() > 30) {
+                description = description.substr(0, 27) + "...";
             }
+            eventDetails << "\tsummary: " << description << "\n";
+            eventDetails << endl;
+            if (event.getActive()) { active++; }
+            if (event.getForcesArrival()) { forcesArrival++; }
+            i++;
         }
         // כתיבת סטטיסטיקות בתחילת הקובץ
         outFile << "Channel " << channel_name << "\n";
@@ -418,33 +371,62 @@ private:
 
     void readLoop() {
         while (!shouldTerminate) {
-            string message;
-            if (!connectionHandler.getFrameAscii(message, '\0')) {
-                cerr << "Connection closed by server." << endl;
-                break;
+            Frame response;
+            if (connectionHandler.getFrame(response)) {
+                handleFrame(response); // טיפול בתגובה שהתקבלה
+            } else {
+                std::cerr << "Failed to receive response from server." << std::endl;
             }
-            Frame frame = Frame::parse(message);
-            handleFrame(frame);
         }
     }
 
-    void handleFrame(const Frame& frame) {
-        if (frame.command == "CONNECTED") {
-            cout << "Server response: CONNECTED" << endl;
-        } else if (frame.command == "RECEIPT") {
-            int receiptId = stoi(frame.headers.at("receipt-id"));
-            if (receiptCallbacks.find(receiptId) != receiptCallbacks.end()) {
-                cout << receiptCallbacks[receiptId] << endl;
-                receiptCallbacks.erase(receiptId);
+    void handleFrame(const Frame& response) {
+        if (response.command == "CONNECTED") {
+            connected = true;
+            cout << "Login successful" << endl;
+
+        } else if (response.command == "RECEIPT") {
+            int receiptId = stoi(response.headers.at("receipt-id"));
+
+            // Check if the receipt ID exists in the map
+            if (gotReceipt.find(receiptId) != gotReceipt.end() && !gotReceipt[receiptId]) {
+                gotReceipt[receiptId] = true; // Update the status to true
+                cout << "got receipt :" << receiptId << endl;
+                if (receiptCallbacks.find(receiptId) != receiptCallbacks.end()) {
+                    cout << receiptCallbacks[receiptId] << endl;
+                    receiptCallbacks.erase(receiptId); // Remove the processed callback
+                }
+                if (receiptId == receiptDisconnect){
+                    stop();
+                }
+            } else {
+                cerr << "Received an incorrect receipt ID: " << receiptId << endl;
             }
-        } else if (frame.command == "MESSAGE") {
-            cout << "Message: " << frame.body << endl;
-        } else if (frame.command == "ERROR") {
-            cerr << "Error from server: " << frame.headers["message"] << endl;
+        }
+        else if (response.command == "MESSAGE") {
+            cout << "Message: " << response.body << endl;
+
+        } else if (response.command == "ERROR") {
+            auto it = response.headers.find("message");
+            if (it != response.headers.end()) {
+                std::string errorMessage = it->second;
+                if (errorMessage == "User already logged in") {
+                    cerr << "Error: User already logged in. Please log out first." << endl;
+                } else if (errorMessage == "Wrong password") {
+                    cerr << "Error: Incorrect password. Please try again." << endl;
+                } else {
+                    cerr << "Login failed: " << errorMessage << endl;
+                }
+            }
+            connectionHandler.close();
+            cerr << "Connection to the server has been closed due to an error." << endl;
+
         } else {
-            cerr << "Unknown frame received: " << frame.command << endl;
+            cerr << "Unexpected Frame received: " << response.command << endl;
+            connectionHandler.close();
         }
     }
+
 
     vector<string> splitString(const string& str, char delimiter) {
         vector<string> tokens;
