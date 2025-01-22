@@ -19,6 +19,9 @@ public class Reactor<T> implements Server<T> {
     private final Supplier<MessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
+    //added this 
+    private ConnectionsImpl<T> connections;
+    private int connectionIdCount;////////this is the unique id!!!!!!
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
@@ -93,15 +96,45 @@ public class Reactor<T> implements Server<T> {
 
 
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
-        SocketChannel clientChan = serverChan.accept();
-        clientChan.configureBlocking(false);
-        final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
-                readerFactory.get(),
-                protocolFactory.get(),
-                clientChan,
-                this);
-        clientChan.register(selector, SelectionKey.OP_READ, handler);
+        SocketChannel clientChan = null; // Declare the client channel outside the try block
+        try {
+            clientChan = serverChan.accept();
+            clientChan.configureBlocking(false);
+    
+            // Initialize a placeholder User
+            User placeholderUser = new User("placeholder", "placeholderPassword");
+    
+            // Create the NonBlockingConnectionHandler
+            NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
+                    readerFactory.get(),
+                    protocolFactory.get(),
+                    clientChan,
+                    this, // Reactor instance
+                    placeholderUser // Placeholder user
+            );
+    
+            // Add the handler to Connections and start the protocol
+            connections.addConnection(connectionIdCount, handler);
+            handler.getProtocol().start(connectionIdCount, connections);
+    
+            // Increment the connection ID count
+            connectionIdCount++;
+    
+            // Register the handler for reading
+            clientChan.register(selector, SelectionKey.OP_READ, handler);
+    
+        } catch (IOException e) {
+            if (clientChan != null) {
+                try {
+                    clientChan.close(); // Close the client channel if an error occurs
+                } catch (IOException ex) {
+                    System.err.println("Failed to close client channel after error: " + ex.getMessage());
+                }
+            }
+            System.err.println("Error while accepting a connection: " + e.getMessage());
+        }
     }
+    
 
     private void handleReadWrite(SelectionKey key) {
         @SuppressWarnings("unchecked")
@@ -125,9 +158,18 @@ public class Reactor<T> implements Server<T> {
         }
     }
 
+
+    //chnaged 
     @Override
     public void close() throws IOException {
+        for (SelectionKey key : selector.keys()) {
+            try {
+                key.channel().close();
+            } catch (IOException ignored) {
+            }
+        }
         selector.close();
     }
+    
 
 }

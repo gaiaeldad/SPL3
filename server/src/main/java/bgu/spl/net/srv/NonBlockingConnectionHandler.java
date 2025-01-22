@@ -52,11 +52,8 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                     while (buf.hasRemaining()) {
                         T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
-                            T response = protocol.process(nextMessage);///לשנות את זה פה כמו שעשיתי עם שני 
-                            if (response != null) {
-                                writeQueue.add(ByteBuffer.wrap(encdec.encode(response)));
-                                reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-                            }
+                             protocol.process(nextMessage);//chnaged this 
+                           
                         }
                     }
                 } finally {
@@ -123,20 +120,11 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     //unlike the blocking can write firectly to the output stream 
     //need to use a buffer to manage the I\O
     
-     @Override
+    @Override
     public void send(T msg) {
-    // Encode the message converts the message into a byte[]
-    byte[] encodedMessage = encdec.encode(msg);
-
-    // Wrap the encoded message in a ByteBuffer that will be written to the channel.
-    ByteBuffer buffer = ByteBuffer.wrap(encodedMessage);
-
-    // Add the buffer to the write queue ensures messages are written in order and without blocking.
-    writeQueue.add(buffer);
-
-    // Register the channel for write operations
-    //notifies the reactor to process this channel for write operations during the next event loop.
-    reactor.updateInterestedOps(chan, SelectionKey.OP_WRITE);
+    if (msg != null) {
+    writeQueue.add(ByteBuffer.wrap(encdec.encode(msg)));
+    reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 }
 
     
@@ -150,4 +138,9 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     public void setUser(User user) {
     this.user = user;
 }
+@Override
+public MessagingProtocol<T> getProtocol() {
+return protocol;
+}
+
 }
