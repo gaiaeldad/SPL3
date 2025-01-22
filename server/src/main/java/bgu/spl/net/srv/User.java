@@ -8,6 +8,8 @@ public class User {
     private final String password; // User's password
     private boolean isLoggedIn; // Tracks whether the user is logged in
     private final Map<Integer, String> subscriptions; // Subscription ID to Channel mapping
+    //add fiels of connection handler and channels see whats schnnels is maybe its subscription 
+
 
     // Constructor for creating a user with a username and password
     public User(String username, String password) {
@@ -58,5 +60,6 @@ public class User {
         return subscriptions.get(subscriptionId);
     }
     
+
 
 }

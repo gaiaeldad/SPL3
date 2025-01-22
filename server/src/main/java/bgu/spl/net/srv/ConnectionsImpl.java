@@ -117,8 +117,8 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method to subscribe a connection to a channel
     public void subscribe(String channel, int subscriptionId, int connectionId) {
-        Map<Integer, String> userChannels = (this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
-        userChannels.put(subscriptionId, channel);
+        Map<Integer, String> channelsforUser = (this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
+        channelsforUser.put(subscriptionId, channel);
         if (!this.channels.containsKey(channel)) {
             this.channels.put(channel, new CopyOnWriteArraySet());
         }
