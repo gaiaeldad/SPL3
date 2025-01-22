@@ -170,7 +170,7 @@ private:
         frame.headers["passcode"] = password;
 
         this->username = username;
-        return frame;
+        return move(frame);
     }
 
 
@@ -195,7 +195,7 @@ private:
         receiptCallbacks[nextReceiptId] = "Joined topic: " + topic;
         nextSubscriptionId++;
         nextReceiptId++;
-        return frame;
+        return move(frame);
         
     }
 
@@ -217,7 +217,7 @@ private:
         gotReceipt[nextReceiptId] = false;
         receiptCallbacks[nextReceiptId++] = "Exited topic: " + topic;
         topicToSubscriptionId.erase(topic);
-        return frame;
+        return move(frame);
     }
 
     Frame handleReport(const std::string& file) {
@@ -286,7 +286,7 @@ private:
         receiptDisconnect = nextReceiptId;
         gotReceipt[nextReceiptId] = false;
         receiptCallbacks[nextReceiptId++] = "logout: " + username;
-        return frame;
+        return move(frame);
     }
 
     void sendFrame(const Frame& frame) {
