@@ -9,22 +9,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectionsImpl<T> implements Connections<T> {
 
-    private final ConcurrentMap<Integer, ConnectionHandler<T>> activeConnections; // Map of connectionId ->
+    private final ConcurrentMap<Integer, ConnectionHandler<T>> connectionHandlers; // Map of connectionId ->
                                                                                   // ConnectionHandler
     private final ConcurrentMap<String, CopyOnWriteArraySet<Integer>> channels; // Map of channel -> Set of
-                                                                                // connectionIds
+                                                                             // connectionIds
     private final ConcurrentMap<String, String> userCredentials; // Map of username -> password////not sure if we need
-                                                                 // thsi
+                                                                 
     private final ConcurrentMap<String, Integer> loggedInUsers; // Map of username -> connectionId
 
     private final ConcurrentMap<String, User> alltimeUsers; // Persistent map of username -> User
-
-    
     private int messageIdCounter = 0; // Counter for unique message IDs
    
 
     public ConnectionsImpl() {
-        activeConnections = new ConcurrentHashMap<>();
+        connectionHandlers = new ConcurrentHashMap<>();
         channels = new ConcurrentHashMap<>();
         userCredentials = new ConcurrentHashMap<>();
         loggedInUsers = new ConcurrentHashMap<>();
@@ -34,7 +32,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     @Override
     //sends to a specific client 
     public boolean send(int connectionId, T msg) {
-        ConnectionHandler<T> handler = activeConnections.get(connectionId);
+        ConnectionHandler<T> handler = connectionHandlers.get(connectionId);
         if (handler != null) {
             handler.send(msg);
             return true;
@@ -59,7 +57,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
         if (username != null) {
             loggedInUsers.remove(username);
         }
-        activeConnections.remove(connectionId); // Remove the client from active connections
+        connectionHandlers.remove(connectionId); // Remove the client from active connections
         // Remove the client from all channels
         for (CopyOnWriteArraySet<Integer> subscribers : channels.values()) {
             subscribers.remove(connectionId);
@@ -69,7 +67,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     @Override
     //changed this for the ides also chnages the interface 
     public void addConnection(int id,ConnectionHandler<T> handler) {
-        activeConnections.put(id, handler);
+        connectionHandlers.put(id, handler);
     }
 
     // Helper method for user login
@@ -86,7 +84,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
         user.setLoggedIn(true); // Mark user as logged in
         loggedInUsers.put(username, connectionId); // Associate user with connection ID
-        activeConnections.get(connectionId).setUser(user); // Associate user with the connection handler
+        connectionHandlers.get(connectionId).setUser(user); // Associate user with the connection handler
     }
 
     public void logout(String username) {
@@ -119,7 +117,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method to subscribe a connection to a channel
     public void subscribe(String channel, int subscriptionId, int connectionId) {
-        Map<Integer, String> userChannels = (this.activeConnections.get(connectionId)).getUser().getSubscriptions();
+        Map<Integer, String> userChannels = (this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
         userChannels.put(subscriptionId, channel);
         if (!this.channels.containsKey(channel)) {
             this.channels.put(channel, new CopyOnWriteArraySet());
@@ -158,7 +156,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Get the handler for a specific connection ID
     public ConnectionHandler<T> getHandler(int connectionId) {
-        return activeConnections.get(connectionId);
+        return connectionHandlers.get(connectionId);
     }
 
 }
