@@ -1,10 +1,10 @@
-CFLAGS:=-c -Wall -Weffc++ -g -std=c++11 -Iinclude
+CFLAGS:=-c -Wall -Weffc++ -g -std=c++14 -Iinclude
 LDFLAGS:=-lboost_system -lpthread
 
 # Build the StompEMIClient
 all: StompEMIClient
 
-StompEMIClient: bin/ConnectionHandler.o bin/StompClient.o bin/StompProtocol.o bin/Frame.o bin/EmergencyEvent.o bin/Event.o
+StompEMIClient: bin/ConnectionHandler.o bin/StompClient.o bin/StompProtocol.o bin/Frame.o bin/EmergencyEvent.o bin/Event.o 
 	g++ -o bin/StompEMIClient bin/ConnectionHandler.o bin/StompClient.o bin/StompProtocol.o bin/Frame.o bin/EmergencyEvent.o bin/Event.o $(LDFLAGS)
 
 bin/ConnectionHandler.o: src/ConnectionHandler.cpp

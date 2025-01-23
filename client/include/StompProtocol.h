@@ -14,7 +14,7 @@ using namespace std;
 
 class StompProtocol {
 private:
-    ConnectionHandler connectionHandler;
+    ConnectionHandler* CH;
     string username;
     bool connected;
     int nextSubscriptionId;
@@ -22,7 +22,9 @@ private:
     int receiptDisconnect;
     map<string, int> topicToSubscriptionId;
     map<int, bool> gotReceipt;
+    mutex gotReceiptMutex;
     map<int, std::string> receiptCallbacks;
+    mutex receiptCallbacksMutex;
     map<std::string, std::map<string, vector<EmergencyEvent>>> eventSummaryMap;
     mutex eventSummaryMapMutex;
     thread readThread;
@@ -31,10 +33,15 @@ private:
     bool isRunning;
 
 public:
-    StompProtocol(const std::string& host, int port);
+    StompProtocol(); // בנאי ברירת מחדל
+    StompProtocol(ConnectionHandler* connectionHandler); // **בנאי מותאם אישית**
+    //rule of 3
+    StompProtocol(const StompProtocol& SP);
+    StompProtocol& operator=(const StompProtocol&);
+    ~StompProtocol();
     void start();
     void stop();
-    ~StompProtocol();
+    
 
 private:
     void keyboardLoop();
