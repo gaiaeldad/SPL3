@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import bgu.spl.net.api.MessageEncoderDecoder;
 
-//this looks good 
+ 
 public class StompEncDec implements MessageEncoderDecoder<String> {
 
     private byte[] buffer = new byte[1 << 10]; // Start with 1KB buffer

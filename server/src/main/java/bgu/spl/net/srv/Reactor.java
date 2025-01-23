@@ -101,17 +101,15 @@ public class Reactor<T> implements Server<T> {
             clientChan = serverChan.accept();
             clientChan.configureBlocking(false);
     
-            // Initialize a placeholder User
-            User placeholderUser = new User("placeholder", "placeholderPassword");
+           
     
             // Create the NonBlockingConnectionHandler
             NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
                     readerFactory.get(),
                     protocolFactory.get(),
                     clientChan,
-                    this, // Reactor instance
-                    placeholderUser // Placeholder user
-            );
+                    this); // Reactor instance
+            
     
             // Add the handler to Connections and start the protocol
             connections.addConnection(connectionIdCount, handler);

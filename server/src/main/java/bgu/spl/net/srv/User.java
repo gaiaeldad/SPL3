@@ -3,20 +3,23 @@ package bgu.spl.net.srv;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class User {
+public class User<T> {
     private final String username;
     private final String password; // User's password
     private boolean isLoggedIn; // Tracks whether the user is logged in
     private final Map<Integer, String> subscriptions; // Subscription ID to Channel mapping
-    //add fiels of connection handler and channels see whats schnnels is maybe its subscription 
+    private ConnectionHandler <T> connectionHandler;
+    private int connectionID;
 
 
     // Constructor for creating a user with a username and password
-    public User(String username, String password) {
+    public User( String username, String password,ConnectionHandler <T> connectionHandler, int connectionID) {
         this.username = username;
         this.password = password;
         this.isLoggedIn = false; // Default to not logged in
         this.subscriptions = new ConcurrentHashMap<>();
+        this.connectionHandler = connectionHandler;
+        this.connectionID = connectionID;
     }
 
     // Get the username
@@ -59,7 +62,23 @@ public class User {
     public String getChannelBySubscriptionId(int subscriptionId) {
         return subscriptions.get(subscriptionId);
     }
-    
+    public ConnectionHandler<T> getConnectionHandler() {
+        return this.connectionHandler;
+     }
+     public void setConnectionHandler(ConnectionHandler<T> handler) {
+        this.connectionHandler = handler;
+     }
+     public int getConnectionID() {
+        return this.connectionID;
+     }
+     public void setConnectionID(int connectionID) {
+        this.connectionID = connectionID;
+     }
+     public void setisLoggedIn(boolean isConnected) {
+        this.isLoggedIn = isConnected;
+     }
+
+
 
 
 }

@@ -8,16 +8,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectionsImpl<T> implements Connections<T> {
-
-    private final ConcurrentMap<Integer, ConnectionHandler<T>> connectionHandlers; // Map of connectionId ->
-                                                                                  // ConnectionHandler
-    private final ConcurrentMap<String, CopyOnWriteArraySet<Integer>> channels; // Map of channel -> Set of
-                                                                             // connectionIds
-    private final ConcurrentMap<String, String> userCredentials; // Map of username -> password////not sure if we need
-                                                                 
+//havent finish going over this 
+    private final ConcurrentMap<Integer, ConnectionHandler<T>> connectionHandlers; // Map of connectionId -> ConnectionHandler
+    private final ConcurrentMap<String, CopyOnWriteArraySet<Integer>> channels; // Map of channel -> Set of connectionIds
+    private final ConcurrentMap<String, String> userCredentials; // Map of username -> password
     private final ConcurrentMap<String, Integer> loggedInUsers; // Map of username -> connectionId
-
-    private final ConcurrentMap<String, User> alltimeUsers; // Persistent map of username -> User
+    private final ConcurrentMap<String, User> alltimeUsers; //  map of username -> User
     private int messageIdCounter = 0; // Counter for unique message IDs
    
 
@@ -52,7 +48,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     @Override
-    public void disconnect(int connectionId) {
+    public void disconnect(int connectionId) {//good 
         String username = getUsernameByConnectionId(connectionId);
         if (username != null) {
             loggedInUsers.remove(username);
@@ -70,37 +66,41 @@ public class ConnectionsImpl<T> implements Connections<T> {
         connectionHandlers.put(id, handler);
     }
 
-    // Helper method for user login
-    public void login(int connectionId, String username, String password) {
-        User user = alltimeUsers.computeIfAbsent(username, key -> new User(username, password)); // Retrieve or create user
-
-        if (!user.getPassword().equals(password)) {
-            throw new IllegalArgumentException("Invalid username or password");
+    // Helper method for user login//good 
+    public void login(int connectionID, String userName, String password) {
+        ConnectionHandler<T> newUserHandler = (ConnectionHandler)this.connectionHandlers.get(connectionID);
+        User user;
+        if (!this.alltimeUsers.containsKey(userName)) {//doesnt excits- open new user 
+           user = new User( userName, password, (ConnectionHandler)this.connectionHandlers.get(connectionID),connectionID);
+           this.alltimeUsers.put(userName, user);
+        } else {//user allready excits 
+           user = (User)this.alltimeUsers.get(userName);
+           user.setisLoggedIn(true);
+           user.setConnectionID(connectionID);
+           user.setConnectionHandler(newUserHandler);
         }
 
-        if (user.isLoggedIn()) {
-            throw new IllegalStateException("User already logged in");
-        }
-
-        user.setLoggedIn(true); // Mark user as logged in
-        loggedInUsers.put(username, connectionId); // Associate user with connection ID
-        connectionHandlers.get(connectionId).setUser(user); // Associate user with the connection handler
-    }
+        loggedInUsers.put(userName, connectionID);
+        newUserHandler.setUser(user);
+     }
 
     public void logout(String username) {
-        User user = alltimeUsers.get(username);
+        User <T> user = alltimeUsers.get(username);
         if (user != null) {
             user.setLoggedIn(false);
+            //this.unsubscribeFromAllChannels(user);///need to add 
+            user.setConnectionHandler((ConnectionHandler)null);
+            user.setConnectionID(-1);
             loggedInUsers.remove(username);
         }
     }
 
-    // Validate login credentials
-    public boolean isLegalLoginInfo(String username, String password) {
+    // Validate login credentials//good 
+    public boolean isLegalCredentials(String username, String password) {
         return userCredentials.containsKey(username) && userCredentials.get(username).equals(password);
     }
 
-    // Check if a user is already logged in
+    // Check if a user is already logged in//good 
     public boolean isUserLogedIn(String username) {
         return loggedInUsers.containsKey(username);
     }
@@ -116,6 +116,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     // Helper method to subscribe a connection to a channel
+    //good 
     public void subscribe(String channel, int subscriptionId, int connectionId) {
         Map<Integer, String> channelsforUser = (this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
         channelsforUser.put(subscriptionId, channel);
@@ -126,13 +127,15 @@ public class ConnectionsImpl<T> implements Connections<T> {
         (this.channels.get(channel)).add(connectionId);
     }
 
-    // Helper method to unsubscribe a connection from a channel
-    public void unsubscribe(String channel, int connectionId) {
-        CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
-        if (subscribers != null) {
-            subscribers.remove(connectionId);
-        }
-    }
+    // Helper method to unsubscribe a connection from a channel//good 
+    public void unsubscribe(int subscriptionId, int connectionId) {
+        Map<Integer, String> channelsforUser = (connectionHandlers.get(connectionId)).getUser().getSubscriptions();
+        String channel = channelsforUser.get(subscriptionId);
+        (channels.get(channel)).remove(connectionId);
+        channelsforUser.remove(subscriptionId);
+     }
+
+
 
     public boolean isChannelAndSubscribe(String channel, int connectionId) {
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);

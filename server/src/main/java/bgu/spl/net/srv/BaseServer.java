@@ -39,14 +39,13 @@ public abstract class BaseServer<T> implements Server<T> {
             while (!Thread.currentThread().isInterrupted()) {
 
                 Socket clientSock = serverSock.accept();
-                // method after the client sends the required details.will update using the set user method
-                User placeholderUser = new User("placeholder", "placeholderPassword");
-
+        
                 BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
-                        clientSock,
-                        encdecFactory.get(),
-                        protocolFactory.get(),
-                        placeholderUser);
+                    clientSock,
+                    (MessageEncoderDecoder<T>) this.encdecFactory.get(),
+                    (MessagingProtocol<T>) this.protocolFactory.get()
+                );
+
                 connections.addConnection(connectionIdCount,handler);
                 handler.getProtocol().start(connectionIdCount,this.connections);
 
@@ -55,6 +54,7 @@ public abstract class BaseServer<T> implements Server<T> {
                 execute(handler);
             }
         } catch (IOException ex) {
+            System.out.println("got ecxpetion in base server");
         }
 
         System.out.println("server closed!!!");

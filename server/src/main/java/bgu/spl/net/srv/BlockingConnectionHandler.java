@@ -15,14 +15,14 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
-    //we added - make sure this is the correct user 
-    private User user; // User associated with this connection
+    //i added 
+    private User user= null;
 
-    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol,User user) {
+    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
-        this.user = user;
+        
     }
 
     @Override
@@ -39,22 +39,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                     protocol.process(nextMessage);
                     
                 }
-                // i added this 22.1 
-            //     if (isLoginMessage(nextMessage)) {
-            //         String username = getUsername(nextMessage);
-            //         String password = extractPassword(nextMessage);
-
-            //         // Validate login (you'll need to implement this)
-            //         if (validateCredentials(username, password)) {
-            //             user.setUsername(username);
-            //             user.setPassword(password);
-            //             user.setLoggedIn(true);
-            //             System.out.println("User logged in: " + username);
-            //         } else {
-            //             System.out.println("Invalid login attempt");
-            //         }
-            //     }
-            // }
+           
 
 
             }
