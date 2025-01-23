@@ -8,7 +8,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectionsImpl<T> implements Connections<T> {
-//havent finish going over this 
+
     private final ConcurrentMap<Integer, ConnectionHandler<T>> connectionHandlers; // Map of connectionId -> ConnectionHandler
     private final ConcurrentMap<String, CopyOnWriteArraySet<Integer>> channels; // Map of channel -> Set of connectionIds
     private final ConcurrentMap<String, String> userCredentials; // Map of username -> password
@@ -48,19 +48,34 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     @Override
-    public void disconnect(int connectionId) {//good 
+    public void disconnect(int connectionId) {
+        // Remove the user from logged-in users
         String username = getUsernameByConnectionId(connectionId);
         if (username != null) {
             loggedInUsers.remove(username);
         }
-        connectionHandlers.remove(connectionId); // Remove the client from active connections
-        // Remove the client from all channels
+    
+        // Remove the connection handler
+        ConnectionHandler<T> handler = connectionHandlers.remove(connectionId);
+        if (handler != null) {
+            User user = handler.getUser();
+            if (user != null) {
+                // Unsubscribe the user from all channels
+                unsubscribeFromChannels(user);
+    
+                // Mark the user as disconnected
+                user.setLoggedIn(false);
+            }
+        }
+    
+        // Remove the connection ID from all channels
         for (CopyOnWriteArraySet<Integer> subscribers : channels.values()) {
             subscribers.remove(connectionId);
         }
     }
+    
 
-    @Override
+    @Override//good 
     //changed this for the ides also chnages the interface 
     public void addConnection(int id,ConnectionHandler<T> handler) {
         connectionHandlers.put(id, handler);
@@ -142,7 +157,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return subscribers != null && subscribers.contains(connectionId);
     }
 
-    // Retrieve connection IDs of a specific channel
+    // Retrieve connection IDs of a specific channel//good 
     public LinkedList<Integer> getConnectionIdsOfChannel(String channel) {
         LinkedList<Integer> connectionIds = new LinkedList<>();
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
@@ -160,6 +175,27 @@ public class ConnectionsImpl<T> implements Connections<T> {
     // Get the handler for a specific connection ID
     public ConnectionHandler<T> getHandler(int connectionId) {
         return connectionHandlers.get(connectionId);
+    }
+
+@Override//goog 
+    public void unsubscribeFromChannels(User user){
+            // Iterate over the user's subscriptions
+            for (Map.Entry<Integer, String> subscription : ((Map<Integer, String>) user.getSubscriptions()).entrySet()) {
+                String channelName = subscription.getValue();
+                int connectionId = loggedInUsers.get(user.getUsername());
+        
+                // Remove the user's connectionId from the channel's subscriber list
+                if (channels.containsKey(channelName)) {
+                    channels.get(channelName).remove(connectionId);
+                }
+            }
+        
+            // Clear the user's subscription map
+            user.getSubscriptions().clear();
+        
+            System.out.println("User " + user.getUsername() + " unsubscribed from all channels.");
+        }
+        
     }
 
 }

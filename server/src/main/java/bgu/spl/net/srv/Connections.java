@@ -32,4 +32,6 @@ public interface Connections<T> {
     int getAndIncMsgIdCounter();
 
     ConnectionHandler<T> getHandler(int connectionId);
+
+    void unsubscribeFromChannels (User user);
 }

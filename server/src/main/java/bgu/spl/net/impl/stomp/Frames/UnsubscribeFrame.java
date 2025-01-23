@@ -71,7 +71,7 @@ private void performUnsubscription() {
         userSubscriptions.remove(subscriptionId);
 
         // Unsubscribe from the server
-        connections.unsubscribe(channel, connectionId);
+        connections.unsubscribe(subscriptionId, connectionId);
     
 } 
     else {

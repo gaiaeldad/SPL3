@@ -7,7 +7,8 @@ public class User<T> {
     private final String username;
     private final String password; // User's password
     private boolean isLoggedIn; // Tracks whether the user is logged in
-    private final Map<Integer, String> subscriptions; // Subscription ID to Channel mapping
+    //changed this now from map 
+    private final ConcurrentHashMap<Integer, String> subscriptions; // Subscription ID to Channel mapping
     private ConnectionHandler <T> connectionHandler;
     private int connectionID;
 
