@@ -1,17 +1,24 @@
 package bgu.spl.net.impl.echo;
 
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.srv.Connections;
+
 import java.time.LocalDateTime;
 
 public class EchoProtocol implements MessagingProtocol<String> {
 
     private boolean shouldTerminate = false;
 
+    //i chnaged this 
     @Override
-    public String process(String msg) {
+    public void process(String msg) {
         shouldTerminate = "bye".equals(msg);
         System.out.println("[" + LocalDateTime.now() + "]: " + msg);
-        return createEcho(msg);
+
+        // Process the message and log the echo, but do not return it.
+        String response = createEcho(msg);
+        System.out.println("Response: " + response);
+        // You could send this response via your connection mechanism if needed.
     }
 
     private String createEcho(String message) {
@@ -23,4 +30,12 @@ public class EchoProtocol implements MessagingProtocol<String> {
     public boolean shouldTerminate() {
         return shouldTerminate;
     }
+    //i added this 
+       @Override
+    public void start(int connectionId, Connections<String> connections) {
+        // Initialize or reset any resources or state for the connection
+        System.out.println("Connection started for connection ID: " + connectionId);
+        // Optionally store connectionId or connections if needed
+    }
+
 }

@@ -43,8 +43,10 @@ public class Reactor<T> implements Server<T> {
 	selectorThread = Thread.currentThread();
         try (Selector selector = Selector.open();
                 ServerSocketChannel serverSock = ServerSocketChannel.open()) {
+                    System.out.println("Reactor server starting on port: " + port);
 
             this.selector = selector; //just to be able to close
+            this.connections = new ConnectionsImpl();
 
             serverSock.bind(new InetSocketAddress(port));
             serverSock.configureBlocking(false);
@@ -96,41 +98,20 @@ public class Reactor<T> implements Server<T> {
 
 
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
-        SocketChannel clientChan = null; // Declare the client channel outside the try block
-        try {
-            clientChan = serverChan.accept();
-            clientChan.configureBlocking(false);
-    
-           
-    
-            // Create the NonBlockingConnectionHandler
-            NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
-                    readerFactory.get(),
-                    protocolFactory.get(),
-                    clientChan,
-                    this); // Reactor instance
-            
-    
-            // Add the handler to Connections and start the protocol
-            connections.addConnection(connectionIdCount, handler);
-            handler.getProtocol().start(connectionIdCount, connections);
-    
-            // Increment the connection ID count
-            connectionIdCount++;
-    
-            // Register the handler for reading
-            clientChan.register(selector, SelectionKey.OP_READ, handler);
-    
-        } catch (IOException e) {
-            if (clientChan != null) {
-                try {
-                    clientChan.close(); // Close the client channel if an error occurs
-                } catch (IOException ex) {
-                    System.err.println("Failed to close client channel after error: " + ex.getMessage());
-                }
-            }
-            System.err.println("Error while accepting a connection: " + e.getMessage());
-        }
+        SocketChannel clientChan = serverChan.accept();
+        clientChan.configureBlocking(false);
+        System.out.println("New client connected: " + clientChan.getRemoteAddress());
+        final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
+                readerFactory.get(),
+                protocolFactory.get(),
+                clientChan,
+                this);
+        this.pool.submit(handler, () -> { ///Our update 
+            handler.getProtocol().start(this.connectionIdCount, this.connections);
+            this.connections.addConnection(this.connectionIdCount,handler);
+        }); //To maintain the invariant that at any given moment, only one thread handles a single connection handler and its associated connection ID.
+        ++this.connectionIdCount;///Our update
+        clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
     
 

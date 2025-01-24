@@ -2,7 +2,6 @@
 
     import bgu.spl.net.srv.Connections;
     import java.io.IOException;
-    import java.util.Iterator;
     import java.util.LinkedList;
     import java.util.Map;
     import java.util.concurrent.ConcurrentHashMap;

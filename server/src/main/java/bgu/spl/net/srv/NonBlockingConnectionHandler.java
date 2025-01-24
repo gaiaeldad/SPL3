@@ -5,6 +5,7 @@ import bgu.spl.net.api.MessagingProtocol;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Queue;
@@ -82,26 +83,50 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     }
 
     public void continueWrite() {
-        while (!writeQueue.isEmpty()) {
-            try {
-                ByteBuffer top = writeQueue.peek();
-                chan.write(top);
-                if (top.hasRemaining()) {
-                    return;
-                } else {
-                    writeQueue.remove();
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                close();
+    while (!writeQueue.isEmpty()) {
+        try {
+            if (!chan.isOpen()) { // Check if the channel is open
+                System.err.println("Channel is closed. Stopping write.");
+                close(); // Ensure the channel is closed and clean up
+                return;
             }
-        }
 
-        if (writeQueue.isEmpty()) {
-            if (protocol.shouldTerminate()) close();
-            else reactor.updateInterestedOps(chan, SelectionKey.OP_READ);
+            ByteBuffer top = writeQueue.peek();
+            int bytesWritten = chan.write(top);
+            System.out.println("Bytes written: " + bytesWritten);
+
+            if (top.hasRemaining()) {
+                // Buffer still has data to write, exit the loop
+                System.out.println("Buffer not fully written, remaining bytes: " + top.remaining());
+                return;
+            } else {
+                // Buffer fully written, remove it from the queue
+                writeQueue.remove();
+                System.out.println("Buffer fully written and removed from queue.");
+            }
+        } catch (ClosedChannelException e) {
+            System.err.println("Attempted to write to a closed channel: " + e.getMessage());
+            close();
+            return;
+        } catch (IOException ex) {
+            System.err.println("I/O error during write: " + ex.getMessage());
+            close();
+            return;
         }
     }
+
+    // If write queue is empty, switch to read mode
+    if (writeQueue.isEmpty()) {
+        if (protocol.shouldTerminate()) {
+            System.out.println("Protocol indicated termination. Closing channel.");
+            close();
+        } else {
+            System.out.println("Write queue empty. Switching to OP_READ.");
+            reactor.updateInterestedOps(chan, SelectionKey.OP_READ);
+        }
+    }
+}
+
 
     private static ByteBuffer leaseBuffer() {
         ByteBuffer buff = BUFFER_POOL.poll();
