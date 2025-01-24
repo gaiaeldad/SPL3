@@ -17,7 +17,7 @@ public class StompMessageProtoclImpl<T> implements MessagingProtocol<T> {
    }
 
    public void process(T msg) {
-      Frame frame = FrameParser.parse((String)msg, this.connections, this.connectionId);//check what is the frame type 
+      Frame frame = FrameParser.parseFrame((String)msg, this.connections, this.connectionId);//check what is the frame type 
       frame.process();//process by the frame type 
    }
 

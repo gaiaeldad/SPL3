@@ -1,68 +1,97 @@
 package bgu.spl.net.impl.stomp.Frames;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 
 import bgu.spl.net.srv.Connections;
 
 public class FrameParser {
-   //im not sure what we need to do here and how- we need to check!!!!!!!!!
-   /////////////////////////////////
-   /// 
-    public static Frame parse(String message, Connections<String> connections, int connectionId) {
-        String[] lines = message.split("\n");
-        String command = lines[0].trim(); // The first line is the command
-        Map<String, String> headers = extractHeaders(lines);
-        String body = extractBody(lines);
 
-        return createFrame(command, headers, body, connections, connectionId);
+    // Main method to parse a message into a Frame
+    public static Frame parseFrame(String rawMessage, Connections<String> connections, int connectionId) {
+        Queue<String> messageLines = new ArrayDeque<>(Arrays.asList(rawMessage.split("\\n")));
+
+        // Extract command type
+        String command = messageLines.poll(); // Use poll() for safe removal
+        if (command == null) {
+            return null; // Invalid frame with no command
+        }
+
+        // Build headers from message lines
+        ConcurrentHashMap<String, String> headerMap = extractHeaders(messageLines);
+
+        // Extract body if available
+        if (!messageLines.isEmpty() && messageLines.peek().isEmpty()) {
+            messageLines.poll(); // Remove empty line separating headers and body
+        }
+        String messageBody = extractBody(messageLines);
+
+        // Generate the appropriate Frame object based on the command
+        return createFrame(command, connectionId, headerMap, messageBody, connections);
     }
 
-    
-    private static Map<String, String> extractHeaders(String[] lines) {
-        Map<String, String> headers = new HashMap<>();
-        for (int i = 1; i < lines.length; i++) {
-            String line = lines[i];
-            if (line.isEmpty()) { // Stop when we encounter an empty line (end of headers)
-                break;
-            }
-            if (line.contains(":")) {
-                String[] parts = line.split(":", 2);
-                headers.put(parts[0].trim(), parts[1].trim());
+    // Helper method to extract headers into a map
+    private static ConcurrentHashMap<String, String> extractHeaders(Queue<String> lines) {
+        ConcurrentHashMap<String, String> headers = new ConcurrentHashMap<>();
+        while (!lines.isEmpty() && !lines.peek().isEmpty()) {
+            String[] keyValue = lines.poll().split(":", 2); // Split into key and value
+            if (keyValue.length == 2) {
+                headers.put(keyValue[0].trim(), keyValue[1].trim());
             }
         }
         return headers;
     }
 
-    private static String extractBody(String[] lines) {
-        StringBuilder bodyBuilder = new StringBuilder();
-        boolean isBody = false;
-        for (String line : lines) {
-            if (line.isEmpty()) {
-                isBody = true; // Empty line marks the start of the body
-                continue;
-            }
-            if (isBody) {
-                bodyBuilder.append(line).append("\n");
-            }
-        }
-        return bodyBuilder.toString().trim();
+    // Helper method to extract the body of the message
+    private static String extractBody(Queue<String> lines) {
+    if (lines == null || lines.isEmpty()) {
+        return ""; // Return an empty string if the lines queue is null or empty
     }
 
-    private static Frame createFrame(String command, Map<String, String> headers, String body, Connections<String> connections, int connectionId) {
+    StringBuilder bodyBuilder = new StringBuilder();
+    while (!lines.isEmpty() && !lines.peek().equals("\u0000")) {
+        bodyBuilder.append(lines.poll()).append("\n");
+    }
+
+    // Remove the trailing newline character (if present) without relying on `strip()`
+    int length = bodyBuilder.length();
+    if (length > 0 && bodyBuilder.charAt(length - 1) == '\n') {
+        bodyBuilder.setLength(length - 1);
+    }
+
+    return bodyBuilder.toString();
+}
+
+
+    // Factory method to create the appropriate Frame object
+    private static Frame createFrame(String command, int connectionId, 
+                                     ConcurrentHashMap<String, String> headers, 
+                                     String body, 
+                                     Connections<String> connections) {
         switch (command) {
+            case "CONNECT":
+                return new ConnectFrame(headers,body,connections,connectionId );
+            case "CONNECTED":
+                return new ConnectedFrame(body, headers, connections, connectionId);
+            case "DISCONNECT":
+                return new DisconnectFrame(headers,body,connections,connectionId );
+            case "MESSAGE":
+                return new MessageFrame(body, headers, connections, connectionId);
+            case "RECEIPT":
+                return new ReceiptFrame(body, headers, connections, connectionId);
             case "SEND":
-                return new SendFrame(headers, body, connections, connectionId);
+                return new SendFrame(headers,body,connections,connectionId );
             case "SUBSCRIBE":
                 return new SubscribeFrame(body, headers, connections, connectionId);
             case "UNSUBSCRIBE":
-                return new UnsubscribeFrame(headers, body, connections, connectionId);
-            case "CONNECT":
-                return new ConnectFrame(headers, body, connections, connectionId);
-            case "DISCONNECT":
-                return new DisconnectFrame(headers, body, connections, connectionId);
+                return new UnsubscribeFrame(headers,body,connections,connectionId );
+            case "ERROR":
+                return new ErrorFrame(body, headers, connections, connectionId);
             default:
-                throw new IllegalArgumentException("Unknown command: " + command);
+                // Return null for unrecognized command types
+                return null;
         }
     }
 }
