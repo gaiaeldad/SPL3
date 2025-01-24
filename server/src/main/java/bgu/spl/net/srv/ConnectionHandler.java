@@ -7,6 +7,8 @@ package bgu.spl.net.srv;
 
 import java.io.Closeable;
 
+import bgu.spl.net.api.MessagingProtocol;
+
 /**
  * The ConnectionHandler interface for Message of type T
  */
@@ -18,7 +20,8 @@ public interface ConnectionHandler<T> extends Closeable {
      */
 
     void send(T msg);
-
     User getUser();
+    void setUser(User user);
+    MessagingProtocol<T> getProtocol();
 
 }

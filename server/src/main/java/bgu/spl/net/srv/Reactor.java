@@ -19,6 +19,9 @@ public class Reactor<T> implements Server<T> {
     private final Supplier<MessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
+    //added this 
+    private ConnectionsImpl<T> connections;
+    private int connectionIdCount;////////this is the unique id!!!!!!
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
@@ -40,8 +43,10 @@ public class Reactor<T> implements Server<T> {
 	selectorThread = Thread.currentThread();
         try (Selector selector = Selector.open();
                 ServerSocketChannel serverSock = ServerSocketChannel.open()) {
+                    System.out.println("Reactor server starting on port: " + port);
 
             this.selector = selector; //just to be able to close
+            this.connections = new ConnectionsImpl();
 
             serverSock.bind(new InetSocketAddress(port));
             serverSock.configureBlocking(false);
@@ -95,13 +100,20 @@ public class Reactor<T> implements Server<T> {
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
+        System.out.println("New client connected: " + clientChan.getRemoteAddress());
         final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
                 readerFactory.get(),
                 protocolFactory.get(),
                 clientChan,
                 this);
+        this.pool.submit(handler, () -> { ///Our update 
+            handler.getProtocol().start(this.connectionIdCount, this.connections);
+            this.connections.addConnection(this.connectionIdCount,handler);
+        }); //To maintain the invariant that at any given moment, only one thread handles a single connection handler and its associated connection ID.
+        ++this.connectionIdCount;///Our update
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
+    
 
     private void handleReadWrite(SelectionKey key) {
         @SuppressWarnings("unchecked")
@@ -125,9 +137,18 @@ public class Reactor<T> implements Server<T> {
         }
     }
 
+
+    //chnaged 
     @Override
     public void close() throws IOException {
+        for (SelectionKey key : selector.keys()) {
+            try {
+                key.channel().close();
+            } catch (IOException ignored) {
+            }
+        }
         selector.close();
     }
+    
 
 }

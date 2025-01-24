@@ -9,20 +9,20 @@ import java.net.Socket;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
-    private final MessagingProtocol<T> protocol;
+    private final MessagingProtocol<T> protocol;// make sure this works as expected 
     private final MessageEncoderDecoder<T> encdec;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
-    //we added 
-    private final User user; // User associated with this connection
+    //i added 
+    private User user= null;
 
-    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol,User user) {
+    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
-        this.user = user;
+        
     }
 
     @Override
@@ -36,12 +36,12 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 T nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
-                    T response = protocol.process(nextMessage);
-                    if (response != null) {
-                        out.write(encdec.encode(response));
-                        out.flush();
-                    }
+                    protocol.process(nextMessage);
+                    
                 }
+           
+
+
             }
 
         } catch (IOException ex) {
@@ -56,19 +56,34 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
         sock.close();
     }
 
+
+    // blocking connection handler write directly to an output stream
     @Override
     public void send(T msg) {
-        try {
-            out.write(encdec.encode(msg));
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (msg != null) {
+            try{
+                out.write(encdec.encode(msg));
+                out.flush();
+            } catch (IOException e){
+                System.out.println(e);
+            }
+            
         }
     }
     @Override
     public User getUser() {
         return user;
     }
+    @Override
+    public void setUser(User user) {
+    this.user = user;
+}
+
+    @Override
+    public MessagingProtocol<T> getProtocol() {
+    return protocol;
+}
+    
     
 
 }

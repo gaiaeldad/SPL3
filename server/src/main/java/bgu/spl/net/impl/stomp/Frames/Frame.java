@@ -1,9 +1,7 @@
 package bgu.spl.net.impl.stomp.Frames;
 
 import bgu.spl.net.srv.Connections;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 //abstract frame class 

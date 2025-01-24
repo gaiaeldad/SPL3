@@ -23,7 +23,7 @@ public class ConnectFrame extends Frame {
             loginSuccessful = false;
             String[] errorDetails = e.getMessage().split(":", 2);// allows separate the error type from the error
                                                                  // description
-            FrameHelper.handleError(
+            FrameHelper.ProcessError(
                     this,
                     errorDetails[0],
                     errorDetails[1],
@@ -95,7 +95,7 @@ public class ConnectFrame extends Frame {
 
     // Check if the login and passcode are valid
     private boolean isValidLogin(String login, String passcode) {
-        return connections.isLegalLoginInfo(login, passcode);
+        return connections.isLegalCredentials(login, passcode);
     }
 
     // Check if the user is already logged in

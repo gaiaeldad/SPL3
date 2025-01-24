@@ -1,117 +1,98 @@
 package bgu.spl.net.impl.stomp.Frames;
 
-import bgu.spl.net.srv.Connections;
+import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
+import bgu.spl.net.srv.Connections;
+
 public class FrameParser {
-   public static Frame Parse(String msg, Connections<String> connections, int connectionId) {
-      Queue<String> msgLinesQueue = new LinkedList(Arrays.asList(msg.split("\\n")));
-      String frameCommandType = (String) msgLinesQueue.remove();
-      Map<String, String> headers = getHeaders(msgLinesQueue);
-      if (!msgLinesQueue.isEmpty() && ((String) msgLinesQueue.peek()).equals("")) {
-         msgLinesQueue.remove();
-      }
 
-      String body = getBody(msgLinesQueue);
-      Frame frame = BuildFrameByCommandType(frameCommandType, headers, body, connections, connectionId);
-      return frame;
-   }
+    // Main method to parse a message into a Frame
+    public static Frame parseFrame(String rawMessage, Connections<String> connections, int connectionId) {
+        System.out.println("Parsing message into frame: " + rawMessage);
+        Queue<String> messageLines = new ArrayDeque<>(Arrays.asList(rawMessage.split("\\n")));
 
-   private static Map<String, String> getHeaders(Queue<String> msgLinesQueue) {
-      ConcurrentHashMap headers = new ConcurrentHashMap();
+        // Extract command type
+        String command = messageLines.poll(); // Use poll() for safe removal
+        if (command == null) {
+            return null; // Invalid frame with no command
+        }
 
-      while (!msgLinesQueue.isEmpty() && !((String) msgLinesQueue.peek()).equals("")) {
-         String[] keyVal = ((String) msgLinesQueue.remove()).split(":");
-         headers.put(keyVal[0], keyVal[1]);
-      }
+        // Build headers from message lines
+        ConcurrentHashMap<String, String> headerMap = extractHeaders(messageLines);
 
-      return headers;
-   }
+        // Extract body if available
+        if (!messageLines.isEmpty() && messageLines.peek().isEmpty()) {
+            messageLines.poll(); // Remove empty line separating headers and body
+        }
+        String messageBody = extractBody(messageLines);
 
-   private static String getBody(Queue<String> msgLinesQueue) {
-      String body;
-      for (body = ""; !msgLinesQueue.isEmpty()
-            & msgLinesQueue.peek() != "\u0000"; body = body + (String) msgLinesQueue.remove() + "\n") {
-      }
+        // Generate the appropriate Frame object based on the command
+        return createFrame(command, connectionId, headerMap, messageBody, connections);
+    }
 
-      return body;
-   }
+    // Helper method to extract headers into a map
+    private static ConcurrentHashMap<String, String> extractHeaders(Queue<String> lines) {
+        ConcurrentHashMap<String, String> headers = new ConcurrentHashMap<>();
+        while (!lines.isEmpty() && !lines.peek().isEmpty()) {
+            String[] keyValue = lines.poll().split(":", 2); // Split into key and value
+            if (keyValue.length == 2) {
+                headers.put(keyValue[0].trim(), keyValue[1].trim());
+            }
+        }
+        return headers;
+    }
 
-   private static Frame BuildFrameByCommandType(String frameCommandType, Map<String, String> headers, String body,
-         Connections<String> connections, int connectionId) {
-      byte var6 = -1;
-      switch (frameCommandType.hashCode()) {
-         case -2087582999:
-            if (frameCommandType.equals("CONNECTED")) {
-               var6 = 1;
-            }
-            break;
-         case -1558724943:
-            if (frameCommandType.equals("UNSUBSCRIBE")) {
-               var6 = 7;
-            }
-            break;
-         case -993530582:
-            if (frameCommandType.equals("SUBSCRIBE")) {
-               var6 = 6;
-            }
-            break;
-         case 2541448:
-            if (frameCommandType.equals("SEND")) {
-               var6 = 5;
-            }
-            break;
-         case 66247144:
-            if (frameCommandType.equals("ERROR")) {
-               var6 = 8;
-            }
-            break;
-         case 1015497884:
-            if (frameCommandType.equals("DISCONNECT")) {
-               var6 = 2;
-            }
-            break;
-         case 1669334218:
-            if (frameCommandType.equals("CONNECT")) {
-               var6 = 0;
-            }
-            break;
-         case 1672907751:
-            if (frameCommandType.equals("MESSAGE")) {
-               var6 = 3;
-            }
-            break;
-         case 1800273432:
-            if (frameCommandType.equals("RECEIPT")) {
-               var6 = 4;
-            }
-      }
+    // Helper method to extract the body of the message
+    private static String extractBody(Queue<String> lines) {
+    if (lines == null || lines.isEmpty()) {
+        return ""; // Return an empty string if the lines queue is null or empty
+    }
 
-      switch (var6) {
-         case 0:
-            return new ConnectFrame(body, headers, connections, connectionId);
-         case 1:
-            return new ConnectedFrame(body, headers, connections, connectionId);
-         case 2:
-            return new DisconnectFrame(body, headers, connections, connectionId);
-         case 3:
-            return new MessageFrame(body, headers, connections, connectionId);
-         case 4:
-            return new ReceiptFrame(body, headers, connections, connectionId);
-         case 5:
-            return new SendFrame(body, headers, connections, connectionId);
-         case 6:
-            return new SubscribeFrame(body, headers, connections, connectionId);
-         case 7:
-            return new UnsubscribeFrame(body, headers, connections, connectionId);
-         case 8:
-            return new ErrorFrame(body, headers, connections, connectionId);
-         default:
-            return null;
-      }
-   }
+    StringBuilder bodyBuilder = new StringBuilder();
+    while (!lines.isEmpty() && !lines.peek().equals("\u0000")) {
+        bodyBuilder.append(lines.poll()).append("\n");
+    }
+
+    // Remove the trailing newline character (if present) without relying on `strip()`
+    int length = bodyBuilder.length();
+    if (length > 0 && bodyBuilder.charAt(length - 1) == '\n') {
+        bodyBuilder.setLength(length - 1);
+    }
+
+    return bodyBuilder.toString();
+}
+
+
+    // Factory method to create the appropriate Frame object
+    private static Frame createFrame(String command, int connectionId, 
+                                     ConcurrentHashMap<String, String> headers, 
+                                     String body, 
+                                     Connections<String> connections) {
+        switch (command) {
+            case "CONNECT":
+                return new ConnectFrame(headers,body,connections,connectionId );
+            case "CONNECTED":
+                return new ConnectedFrame(body, headers, connections, connectionId);
+            case "DISCONNECT":
+                return new DisconnectFrame(headers,body,connections,connectionId );
+            case "MESSAGE":
+                return new MessageFrame(body, headers, connections, connectionId);
+            case "RECEIPT":
+                return new ReceiptFrame(body, headers, connections, connectionId);
+            case "SEND":
+                return new SendFrame(headers,body,connections,connectionId );
+            case "SUBSCRIBE":
+                return new SubscribeFrame(body, headers, connections, connectionId);
+            case "UNSUBSCRIBE":
+                return new UnsubscribeFrame(headers,body,connections,connectionId );
+            case "ERROR":
+                return new ErrorFrame(body, headers, connections, connectionId);
+            default:
+                // Return null for unrecognized command types
+                return null;
+        }
+    }
 }

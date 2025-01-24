@@ -21,12 +21,16 @@ public class EchoClient {
         }
 
         //BufferedReader and BufferedWriter automatically using UTF-8 encoding
-        try (Socket sock = new Socket(args[0], 7777);
+        //changed the port 
+        try (Socket sock = new Socket(args[0], 8888);
                 BufferedReader in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
                 BufferedWriter out = new BufferedWriter(new OutputStreamWriter(sock.getOutputStream()))) {
 
             System.out.println("sending message to server");
-            out.write(args[1]);
+            //changed this 
+            out.write("CONNECT\naccept-version:1.2\nhost:stomp.cs.bgu.ac.il\nlogin:guest\npasscode:guest\n\n\u0000");
+
+
             out.newLine();
             out.flush();
 

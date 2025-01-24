@@ -6,14 +6,18 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+
+//helper function for the frames 
 public class FrameHelper {
    public static final String STOMP_VERSION = "1.2";
    public static final Object HOST = "stomp.cs.bgu.ac.il";
 
+//Recipt 
    public static void sendReceiptFrame(String receiptId, Connections<String> connections, int connectionId) {
-      connections.send(connectionId,
-            (new ReceiptFrame("", createReceiptHeaders(receiptId), connections, connectionId)).toString());
+   connections.send(connectionId,(new ReceiptFrame("", createReceiptHeaders(receiptId), connections, connectionId)).toString());
    }
+
 
    private static Map<String, String> createReceiptHeaders(String receiptId) {
       Map<String, String> receiptHeaders = new ConcurrentHashMap();
@@ -21,9 +25,10 @@ public class FrameHelper {
       return receiptHeaders;
    }
 
-   public static void handleError(Frame frameCausedErr, String errSummary, String errExplain,
+   //Error Handeling 
+   public static void ProcessError(Frame failedFrame, String SummaryError, String ExplainError,
          Connections<String> connections, int connectionId, String receiptId) {
-      sendErrorFrame(frameCausedErr, errSummary, errExplain, connections, connectionId, receiptId);
+      sendErrorFrame(failedFrame, SummaryError, ExplainError, connections, connectionId, receiptId);
       ConnectionHandler<String> handler = connections.getHandler(connectionId);
       connections.disconnect(connectionId);
 
@@ -35,32 +40,34 @@ public class FrameHelper {
 
    }
 
-   public static void sendErrorFrame(Frame frameCausedErr, String errHeader, String errExplain,
+   public static void sendErrorFrame(Frame failedFrame, String errorHeader, String ExplainError,
          Connections<String> connections, int connectionId, String receiptId) {
-      connections.send(connectionId, (new ErrorFrame(createErrBody(frameCausedErr, errExplain),
-            createErrHeaders(receiptId, errHeader), connections, connectionId)).toString());
+      connections.send(connectionId, (new ErrorFrame(ErrorBody(failedFrame, ExplainError),
+            createErrorHeaders(receiptId, errorHeader), connections, connectionId)).toString());
    }
 
-   private static String createErrBody(Frame frameCausedErr, String errExplain) {
+   private static String ErrorBody(Frame failedFrame, String ExplainError) {
       String errBody = "";
       errBody = errBody + "The message: \\n";
       errBody = errBody + "----- \\n";
-      errBody = errBody + frameCausedErr.toString();
+      errBody = errBody + failedFrame.toString();
       errBody = errBody + "----- \\n";
-      errBody = errBody + errExplain;
+      errBody = errBody + ExplainError;
       return errBody;
    }
 
-   private static Map<String, String> createErrHeaders(String receiptId, String errHeader) {
+   private static Map<String, String> createErrorHeaders(String receiptId, String errorHeader) {
       Map<String, String> errHeaders = new ConcurrentHashMap();
       if (receiptId != null) {
          errHeaders.put("receipt-id", receiptId);
       }
 
-      errHeaders.put("message", errHeader);
+      errHeaders.put("message", errorHeader);
       return errHeaders;
    }
 
+
+   //connect 
    public static void sendConnectedFrame(String StompVersion, int connectionId, Connections<String> connections) {
       connections.send(connectionId,
             (new ConnectedFrame("", createConnectedHeaders(StompVersion), connections, connectionId)).toString());
@@ -72,6 +79,8 @@ public class FrameHelper {
       return headers;
    }
 
+
+   //Message 
    public static void sendMessageFrame(String msg, String subscriptionId, String channelName, String messageId,
          int connectionId, Connections<String> connections) {
       connections.send(connectionId, (new MessageFrame(msg,
