@@ -95,7 +95,7 @@ public class ConnectFrame extends Frame {
 
     // Check if the login and passcode are valid
     private boolean isValidLogin(String login, String passcode) {
-        return connections.isLegalLoginInfo(login, passcode);
+        return connections.isLegalCredentials(login, passcode);
     }
 
     // Check if the user is already logged in

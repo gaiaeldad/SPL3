@@ -41,8 +41,10 @@ public class ConnectionsImpl<T> implements Connections<T> {
     public void send(String channel, T msg) {
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
         if (subscribers != null) {
+            synchronized (subscribers){
             for (int connectionId : subscribers) {
                 send(connectionId, msg); // Send the message to each subscriber
+            }
             }
         }
     }
@@ -50,13 +52,18 @@ public class ConnectionsImpl<T> implements Connections<T> {
     @Override
     public void disconnect(int connectionId) {
         // Remove the user from logged-in users
+        synchronized (loggedInUsers) {
         String username = getUsernameByConnectionId(connectionId);
         if (username != null) {
             loggedInUsers.remove(username);
         }
+    }
     
         // Remove the connection handler
-        ConnectionHandler<T> handler = connectionHandlers.remove(connectionId);
+        ConnectionHandler<T> handler = null;
+        synchronized (connectionHandlers) {
+         handler = connectionHandlers.remove(connectionId);
+        }
         if (handler != null) {
             User user = handler.getUser();
             if (user != null) {
@@ -69,10 +76,13 @@ public class ConnectionsImpl<T> implements Connections<T> {
         }
     
         // Remove the connection ID from all channels
+        synchronized (channels) {
         for (CopyOnWriteArraySet<Integer> subscribers : channels.values()) {
             subscribers.remove(connectionId);
         }
     }
+    }
+
     
 
     @Override//good 
@@ -83,27 +93,42 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method for user login//good 
     public void login(int connectionID, String userName, String password) {
-        ConnectionHandler<T> newUserHandler = (ConnectionHandler)this.connectionHandlers.get(connectionID);
+        // Retrieve the connection handler (ConcurrentHashMap is thread-safe for this operation)
+        ConnectionHandler<T> newUserHandler = connectionHandlers.get(connectionID);
+    
+        
         User user;
-        if (!this.alltimeUsers.containsKey(userName)) {//doesnt excits- open new user 
-           user = new User( userName, password, (ConnectionHandler)this.connectionHandlers.get(connectionID),connectionID);
-           this.alltimeUsers.put(userName, user);
-        } else {//user allready excits 
-           user = (User)this.alltimeUsers.get(userName);
-           user.setisLoggedIn(true);
-           user.setConnectionID(connectionID);
-           user.setConnectionHandler(newUserHandler);
+        synchronized (alltimeUsers) {
+            if (!alltimeUsers.containsKey(userName)) {
+                // New user: Create and store in alltimeUsers
+                user = new User(userName, password, newUserHandler, connectionID);
+                alltimeUsers.put(userName, user);
+            } else {
+                // Existing user: Update its state
+                user = alltimeUsers.get(userName);
+                synchronized (user) { // Lock only the specific user object for updates
+                    user.setisLoggedIn(true);
+                    user.setConnectionID(connectionID);
+                    user.setConnectionHandler(newUserHandler);
+                }
+            }
         }
-
+    
+        // Update loggedInUsers (ConcurrentHashMap handles thread safety for put operations)
         loggedInUsers.put(userName, connectionID);
-        newUserHandler.setUser(user);
-     }
+    
+        // Associate the user with the connection handler, if present
+        if (newUserHandler != null) {
+            newUserHandler.setUser(user);
+        }
+    }
+    
 
     public void logout(String username) {
         User <T> user = alltimeUsers.get(username);
         if (user != null) {
             user.setLoggedIn(false);
-            //this.unsubscribeFromAllChannels(user);///need to add 
+            this.unsubscribeFromChannels(user);
             user.setConnectionHandler((ConnectionHandler)null);
             user.setConnectionID(-1);
             loggedInUsers.remove(username);
@@ -145,13 +170,16 @@ public class ConnectionsImpl<T> implements Connections<T> {
     // Helper method to unsubscribe a connection from a channel//good 
     public void unsubscribe(int subscriptionId, int connectionId) {
         Map<Integer, String> channelsforUser = (connectionHandlers.get(connectionId)).getUser().getSubscriptions();
+        
         String channel = channelsforUser.get(subscriptionId);
-        (channels.get(channel)).remove(connectionId);
-        channelsforUser.remove(subscriptionId);
+        synchronized (channels.get(channel)) {
+            channels.get(channel).remove(connectionId);
+        }
+            channelsforUser.remove(subscriptionId);
      }
 
 
-
+//good 
     public boolean isChannelAndSubscribe(String channel, int connectionId) {
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
         return subscribers != null && subscribers.contains(connectionId);
