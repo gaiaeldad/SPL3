@@ -20,7 +20,7 @@ public interface Connections<T> {
 
     boolean isUserLogedIn(String username);
 
-    void subscribe(String channel, int subscriptionId, int connectionId);
+    void subscribe( int subscriptionId, int connectionId,String channel);
 
     void unsubscribe(int subscriptionId, int connectionId);
 
@@ -34,4 +34,10 @@ public interface Connections<T> {
     ConnectionHandler<T> getHandler(int connectionId);
 
     void unsubscribeFromChannels (User user);
+
+    boolean isDestinationLegal(String channel, int connectionId);
+    
+    void debugActiveConnections();
+
+    void addConnectionHandler (ConnectionHandler<T> handler, int connectionId);
 }

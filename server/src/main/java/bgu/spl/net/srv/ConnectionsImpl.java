@@ -52,10 +52,12 @@ public class ConnectionsImpl<T> implements Connections<T> {
     @Override
     public void disconnect(int connectionId) {
         // Remove the user from logged-in users
+        System.out.println("[Debug] Disconnecting connectionId: " + connectionId);
         synchronized (loggedInUsers) {
         String username = getUsernameByConnectionId(connectionId);
         if (username != null) {
             loggedInUsers.remove(username);
+            System.out.println("[Debug] Removed user " + username + " from loggedInUsers");
         }
     }
     
@@ -73,6 +75,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
                 // Mark the user as disconnected
                 user.setLoggedIn(false);
             }
+            System.out.println("[Debug] Disconnect cleanup complete for connectionId: " + connectionId);
         }
     
         // Remove the connection ID from all channels
@@ -89,14 +92,19 @@ public class ConnectionsImpl<T> implements Connections<T> {
     //changed this for the ides also chnages the interface 
     public void addConnection(int id,ConnectionHandler<T> handler) {
         connectionHandlers.put(id, handler);
+        System.out.println("[Debug] Added connectionId: " + id + " with handler: " + handler);
     }
 
     // Helper method for user login//good 
     public void login(int connectionID, String userName, String password) {
         // Retrieve the connection handler (ConcurrentHashMap is thread-safe for this operation)
         ConnectionHandler<T> newUserHandler = connectionHandlers.get(connectionID);
-    
-        
+        if (newUserHandler == null) {
+            System.out.println("[Error] Cannot log in: ConnectionHandler not found for connectionId: " + connectionID);
+            return; // Prevent further execution
+        }
+        System.out.println("[Debug] Found handler for connectionId: " + connectionID);
+
         User user;
         synchronized (alltimeUsers) {
             if (!alltimeUsers.containsKey(userName)) {
@@ -156,16 +164,39 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     // Helper method to subscribe a connection to a channel
-    //good 
-    public void subscribe(String channel, int subscriptionId, int connectionId) {
-        Map<Integer, String> channelsforUser = (this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
-        channelsforUser.put(subscriptionId, channel);
-        if (!this.channels.containsKey(channel)) {
-            this.channels.put(channel, new CopyOnWriteArraySet());
+    
+    @Override
+    public void subscribe(int connectionId, int subscriptionId, String channel) {
+        // Add the subscription to the user's subscription list
+        ConnectionHandler<T> handler = connectionHandlers.get(connectionId);
+        if (handler == null) {
+            System.out.println("[Error] ConnectionHandler is null for connectionId: " + connectionId);
+            return;
         }
-
-        (this.channels.get(channel)).add(connectionId);
+        System.out.println("[Debug] Handler found for connectionId: " + connectionId);
+    
+        User user = handler.getUser();
+        if (user == null) {
+            System.out.println("[Error] User is null for connectionId: " + connectionId);
+            return;
+        }
+    
+        // Add to the user's subscriptions
+        Map<Integer, String> subscriptions = user.getSubscriptions();
+        subscriptions.put(subscriptionId, channel);
+    
+        // Add the connectionId to the channel's subscriber list
+        channels.computeIfAbsent(channel, key -> new CopyOnWriteArraySet<>());
+        synchronized (channels.get(channel)) {
+            channels.get(channel).add(connectionId);
+        }
+    
+        System.out.println("[Debug] Subscribed connectionId " + connectionId + " to channel " + channel);
+        System.out.println("[Debug] Current channels map: " + channels);
     }
+    
+
+    
 
     // Helper method to unsubscribe a connection from a channel//good 
     public void unsubscribe(int subscriptionId, int connectionId) {
@@ -205,25 +236,64 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return connectionHandlers.get(connectionId);
     }
 
-@Override//goog 
-    public void unsubscribeFromChannels(User user){
-            // Iterate over the user's subscriptions
-            for (Map.Entry<Integer, String> subscription : ((Map<Integer, String>) user.getSubscriptions()).entrySet()) {
-                String channelName = subscription.getValue();
-                int connectionId = loggedInUsers.get(user.getUsername());
-        
-                // Remove the user's connectionId from the channel's subscriber list
-                if (channels.containsKey(channelName)) {
-                    channels.get(channelName).remove(connectionId);
-                }
+    @Override
+    public void unsubscribeFromChannels(User user) {
+        Map<Integer, String> subscriptions = user.getSubscriptions();
+    
+        for (Map.Entry<Integer, String> entry : subscriptions.entrySet()) {
+            String channel = entry.getValue();
+            if (channel != null && channels.containsKey(channel)) {
+                channels.get(channel).remove(user.getConnectionID());
+            } else {
+                System.out.println("[Warning] Channel " + channel + " not found.");
             }
-        
-            // Clear the user's subscription map
-            user.getSubscriptions().clear();
-        
-            System.out.println("User " + user.getUsername() + " unsubscribed from all channels.");
         }
-        
+    
+        subscriptions.clear();
+        System.out.println("[Debug] Cleared subscriptions for user: " + user.getUsername());
     }
+    @Override
+public boolean isDestinationLegal(String channel, int connectionId) {
+    System.out.println("[Debug] Validating channel: " + channel + " for connectionId: " + connectionId);
+
+    // Check if the channel exists
+    if (!channels.containsKey(channel)) {
+        System.out.println("[Debug] Channel not found: " + channel);
+        return false;
+    }
+
+    // Check if the user is subscribed
+    ConnectionHandler<T> handler = connectionHandlers.get(connectionId);
+    if (handler == null) {
+        System.out.println("[Error] ConnectionHandler not found for connectionId: " + connectionId);
+        return false;
+    }
+    User user = handler.getUser();
+    if (user == null) {
+        System.out.println("[Error] User not found for connectionId: " + connectionId);
+        return false;
+    }
+
+    Map<Integer, String> subscriptions = user.getSubscriptions();
+    boolean isSubscribed = subscriptions.containsValue(channel);
+
+    System.out.println("[Debug] Channel validation: channel=" + channel +
+                       ", connectionId=" + connectionId + ", isSubscribed=" + isSubscribed);
+
+    return isSubscribed;
+}
+
+    
+    
+    
+    public void debugActiveConnections() {
+        System.out.println("[Debug] Active connections: " + connectionHandlers.keySet());
+    }
+    public void addConnectionHandler(ConnectionHandler<T> handler, int connectionId) {
+        this.connectionHandlers.put(connectionId, handler);
+     }
+    
+}
+    
 
 

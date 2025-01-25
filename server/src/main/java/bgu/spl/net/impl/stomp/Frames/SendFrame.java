@@ -45,27 +45,34 @@
         // Validate the "destination" header to ensure the channel exists and the user
         // is subscribed
         private void validateDestination() throws IOException {
-            String destination = headers.get("destination");
-
-            if (destination == null) {
-                throw new IOException("Missing Header:SEND frame must include the 'destination' header.");
+            if (!headers.containsKey("destination")) {
+                throw new IOException("Frame doesn't contain destination header:SEND frame must contain destination header");
             }
-
-            // Check if the channel exists and if the user is subscribed
-            if (!connections.isChannelAndSubscribe(destination.substring(1), connectionId)) {
-                throw new IOException(
-                        "Invalid Channel:You tried to send a message to a channel that doesn't exist or you are not subscribed to.");
+        
+            String destination = headers.get("destination"); // Keep the full destination
+        
+            System.out.println("[Debug] Validating destination: " + destination);
+        
+            if (!connections.isDestinationLegal(destination, connectionId)) {
+                throw new IOException("Illegal destination: Channel doesn't exist or you're not subscribed to it");
             }
+        
+            System.out.println("[Debug] Destination validated successfully for channel: " + destination);
         }
+        
+        
+        
 
         // Forward the message to all clients subscribed to the destination
         private void forwardMessage() {
             // Retrieve the list of connection IDs subscribed to the channel
-            LinkedList<Integer> subscribers = connections
-                    .getConnectionIdsOfChannel(headers.get("destination").substring(1));
+            LinkedList<Integer> subscribers = connections.getConnectionIdsOfChannel(headers.get("destination").substring(1));
+            System.out.println("[Debug] Forwarding message to channel: " + headers.get("destination"));
+            System.out.println("[Debug] Subscribers: " + subscribers);
         
             // For each subscriber, send the message
             for (int subscriberId : subscribers) {
+                System.out.println("[Debug] Sending message to connectionId: " + subscriberId);
                 // Create headers for the MessageFrame
                 Map<String, String> messageHeaders = new ConcurrentHashMap<>();
                 messageHeaders.put("destination", headers.get("destination"));

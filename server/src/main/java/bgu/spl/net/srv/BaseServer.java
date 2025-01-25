@@ -46,9 +46,13 @@ public abstract class BaseServer<T> implements Server<T> {
                     (MessageEncoderDecoder<T>) this.encdecFactory.get(),
                     (MessagingProtocol<T>) this.protocolFactory.get()
                 );
-
+                System.out.println("[Debug] Adding connectionId: " + connectionIdCount + " for handler: " + handler);
                 connections.addConnection(connectionIdCount,handler);
-                handler.getProtocol().start(connectionIdCount,this.connections);
+                System.out.println("[Debug] Adding connectionId: " + connectionIdCount + " with handler: " + handler);
+                connections.debugActiveConnections();
+                System.out.println("[Debug] Starting protocol for connectionId: " + connectionIdCount);
+                handler.getProtocol().start(this.connectionIdCount,this.connections);
+                this.connections.addConnectionHandler(handler, this.connectionIdCount);
 
                 connectionIdCount++;
                 
