@@ -33,7 +33,9 @@ public class Reactor<T> implements Server<T> {
             Supplier<MessageEncoderDecoder<T>> readerFactory) {
 
         this.pool = new ActorThreadPool(numThreads);
+        System.out.println("Number of threads: " + numThreads);
         this.port = port;
+        System.out.println("Reactor initialized with port: " + port);
         this.protocolFactory = protocolFactory;
         this.readerFactory = readerFactory;
     }
@@ -116,8 +118,10 @@ public class Reactor<T> implements Server<T> {
     
 
     private void handleReadWrite(SelectionKey key) {
+    
         @SuppressWarnings("unchecked")
         NonBlockingConnectionHandler<T> handler = (NonBlockingConnectionHandler<T>) key.attachment();
+        System.out.println("Handling read from client...");
 
         if (key.isReadable()) {
             Runnable task = handler.continueRead();
