@@ -48,4 +48,8 @@ public:
 	// Close down the connection properly.
 	void close();
 
+	std::string getHost() const;
+
+	short getPort() const;
+
 }; //class ConnectionHandler

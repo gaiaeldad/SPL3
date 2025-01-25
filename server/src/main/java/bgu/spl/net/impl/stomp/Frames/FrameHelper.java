@@ -11,7 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 //helper function for the frames 
 public class FrameHelper {
    public static final String STOMP_VERSION = "1.2";
-   public static final Object HOST = "stomp.cs.bgu.ac.il";
+   //public static final Object HOST = "stomp.cs.bgu.ac.il";
+   //chnaged this for the testing 
+   public static final String HOST = "127.0.0.1";
+
 
 //Recipt 
    public static void sendReceiptFrame(String receiptId, Connections<String> connections, int connectionId) {

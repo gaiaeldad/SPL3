@@ -137,7 +137,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Validate login credentials//good 
     public boolean isLegalCredentials(String username, String password) {
-        return userCredentials.containsKey(username) && userCredentials.get(username).equals(password);
+        return !this.alltimeUsers.containsKey(username) || ((User)this.alltimeUsers.get(username)).getPassword().equals(password);
     }
 
     // Check if a user is already logged in//good 

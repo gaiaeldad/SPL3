@@ -1,0 +1,11 @@
+Channel police
+Stats:
+Total: 1
+active: 1
+forces arrival at scene: 0
+Event Reports:
+Report_1:
+city: Liberty City
+date time: 1734961200
+event name: Grand Theft Auto
+summary: Pink Lampadati Felon with l...
