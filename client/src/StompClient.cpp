@@ -42,33 +42,38 @@ int main(int argc, char* argv[]) {
 
     // Thread for server communication
     thread serverThread([&]() {
-        cout << " Server thread started1" << endl;
-        unique_lock<mutex> lock(connectionMutex);
-        connectionCV.wait(lock, [&]() { return CH != nullptr; });
-        cout << " Server thread started2" << endl;
-
-        string lastFrame;
-        string response;
-
-        while (CH && CH->getFrameAscii(response, '\0') && !stompProtocol.isshouldTerminate()) {
-            if (response == lastFrame) {
-                continue;  // דלג על מסגרת שכבר טופלה
+        while (true) {
+            unique_lock<mutex> lock(connectionMutex);
+            connectionCV.wait(lock, [&]() { return CH != nullptr || stompProtocol.isshouldTerminate(); }); // ממתין לחיבור או לסיום
+             cout << " Server thread started1" << endl;
+            if (stompProtocol.isshouldTerminate()) {
+            break; // יציאה אם הקליינט צריך להסתיים
             }
-            if (response.empty()) {
-                continue;
+
+            string lastFrame;
+            string response;
+
+            while (CH && CH->getFrameAscii(response, '\0') && !stompProtocol.isshouldTerminate()) {
+                if (response == lastFrame) {
+                    continue;  // דלג על מסגרת שכבר טופלה
+                }
+                if (response.empty()) {
+                    continue;
+                }
+                lastFrame = response;  // שמור את המסגרת הנוכחית כמסגרת האחרונה שטופלה
+                stompProtocol.handleServerResponse(response);
+                response.clear();  // נקה את התגובה לפני הקריאה הבאה
             }
-            lastFrame = response;  // שמור את המסגרת הנוכחית כמסגרת האחרונה שטופלה
-            stompProtocol.handleServerResponse(response);
-            response.clear();  // נקה את התגובה לפני הקריאה הבאה
-        }
 
-        if (!CH) {
-            cerr << " connectionHandler is null in serverListenerThread (address: " << CH.get() << ")." << endl;
-        } else {
-            cout << " connectionHandler is still valid in serverListenerThread (address: " << CH.get() << ")." << endl;
-        }
-
-                cout << " Server thread exiting." << endl;
+            if (!CH) {
+                cerr << " connectionHandler is null in serverListenerThread (address: " << CH.get() << ")." << endl;
+                firsConnect=false;
+                connectionCV.wait(lock, [&]() { return CH != nullptr || stompProtocol.isshouldTerminate(); }); // מחכה להתחברות מחדש
+            } else {
+                cout << " connectionHandler is still valid in serverListenerThread (address: " << CH.get() << ")." << endl;
+            }
+        }    
+        cout << " Server thread exiting." << endl;
 
     });
 

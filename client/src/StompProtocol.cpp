@@ -217,6 +217,7 @@ void StompProtocol::handleLogout() {
     boost::unique_lock<boost::shared_mutex> receiptLock(receiptCallbacksMutex);
     receiptCallbacks[nextReceiptId] = "Logged out.";
     nextReceiptId++;
+    connected = false;
 }
 
 void StompProtocol::createSummary(const string& channel_name, const string& user, const string& file) {
@@ -319,26 +320,6 @@ void StompProtocol::createSummary(const string& channel_name, const string& user
 }
 
 
-// bool StompProtocol::isReceiptValid(const Frame& frame, int receiptId) {
-//     auto it = frame.headers.find("receipt-id");
-//     return frame.command == "RECEIPT" && it != frame.headers.end() && it->second == to_string(receiptId);
-// }
-
-// void StompProtocol::readLoop() {
-    
-//     while (!shouldTerminate) {
-//         Frame response;
-//         if (CH != nullptr){
-//             if (CH->getFrame(response)) {
-//                 handleFrame(response);
-//             }else {
-//                 cerr << "Failed to receive response from server." << endl;
-//             }
-//         }
-        
-//     }
-// }
-
 ///serverReaderThred
 
 void StompProtocol::handleReceipt(Frame connectFrame)
@@ -384,7 +365,7 @@ void StompProtocol::handleMessage(Frame messageFrame) {
         string body = messageFrame.getBody();
         Event event(body);
 
-        // הסרת "/" אם מופיע בתחילת ה-destination
+       // הסרת "/" אם מופיע בתחילת ה-destination
         if (!destination.empty() && destination[0] == '/') {
             destination = destination.substr(1);
         }

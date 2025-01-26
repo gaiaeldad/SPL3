@@ -191,9 +191,9 @@ public class ConnectionsImpl<T> implements Connections<T> {
             System.out.println("[Error] Subscriptions are null for connectionId: " + connectionId);
             return; // Exit if there are no subscriptions for the user
         }
-        String channel = channelsforUser.get(subscriptionId);
+        String channel = channelsforUser.get(connectionId);
         if (channel == null) {
-            System.out.println("[Error] No channel found for subscriptionId: " + subscriptionId);
+            System.out.println("[Error] No channel found for subscriptionId: " + connectionId);
             return; // Exit if the subscription ID is invalid
         }
         if (!channels.containsKey(channel)) {
