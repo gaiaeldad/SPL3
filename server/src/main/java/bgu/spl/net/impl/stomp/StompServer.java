@@ -42,7 +42,7 @@ public class StompServer {
 
             default:
                 System.out.println("Unknown mode: " + mode);
-                System.out.println("Modes: reactor, thread-per-client");
+                System.out.println("Modes: reactor, tpc");
                 break;
         }
     }
