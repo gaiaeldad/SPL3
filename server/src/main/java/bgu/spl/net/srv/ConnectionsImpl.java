@@ -183,31 +183,14 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method to unsubscribe a connection from a channel//good
     public void unsubscribe(int subscriptionId, int connectionId) {
-        System.out
-                .println("[Debug] Unsubscribing connectionId: " + connectionId + ", subscriptionId: " + subscriptionId);
+        Map<Integer, String> userChannels = ((ConnectionHandler)this.connectionHandlers.get(connectionId)).getUser().getSubscriptions();
+        String channel = (String)userChannels.get(subscriptionId);
+        ((CopyOnWriteArraySet)this.channels.get(channel)).remove(connectionId);
+        userChannels.remove(subscriptionId);
+     }
 
-        Map<Integer, String> channelsforUser = (connectionHandlers.get(connectionId)).getUser().getSubscriptions();
-        if (channelsforUser == null) {
-            System.out.println("[Error] Subscriptions are null for connectionId: " + connectionId);
-            return; // Exit if there are no subscriptions for the user
-        }
-        String channel = channelsforUser.get(subscriptionId);
-        if (channel == null) {
-            System.out.println("[Error] No channel found for subscriptionId: " + subscriptionId);
-            return; // Exit if the subscription ID is invalid
-        }
-        if (!channels.containsKey(channel)) {
-            System.out.println("[Error] Channel not found: " + channel);
-            return; // Exit if the channel does not exist
 
-        }
-        synchronized (channels.get(channel)) {
-            channels.get(channel).remove(connectionId);
-            System.out.println("[Debug] Removed connectionId: " + connectionId + " from channel: " + channel);
-        }
-        channelsforUser.remove(subscriptionId);
-        System.out.println("[Debug] Removed subscriptionId: " + subscriptionId + " for connectionId: " + connectionId);
-    }
+
 
     // good
     public boolean isChannelAndSubscribe(String channel, int connectionId) {

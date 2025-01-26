@@ -76,7 +76,7 @@ public class SubscribeFrame extends Frame {
     // Add the subscription for the client to the specified destination
     private void performSubscription() {
         connections.subscribe(
-                Integer.parseInt(headers.get("id")),
+                Integer.parseInt(headers.get("id")),/////what is this 
                 connectionId,
                 headers.get("destination"));
     }
