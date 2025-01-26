@@ -96,6 +96,15 @@ void StompProtocol::handleJoin(const string& topic) {
     topicToSubscriptionId[topic] = nextSubscriptionId;
     receiptCallbacks[nextReceiptId] = "Joined topic: " + topic;
 
+    boost::unique_lock<boost::shared_mutex> lock(channelSubscribersMutex);
+    // אם הערוץ לא קיים, מוסיפים אותו למפה
+    if (channelSubscribersMap.find(topic) == channelSubscribersMap.end()) {
+        channelSubscribersMap[topic] = std::set<std::string>();
+    }
+    // מוסיפים את המשתמש לערוץ
+    channelSubscribersMap[topic].insert(username);
+    std::cout << "User " << username << " joined channel: " << topic << std::endl;
+
      boost::unique_lock<boost::shared_mutex> mapWriteLock(eventSummaryMapMutex);
         if (eventSummaryMap.find(topic) == eventSummaryMap.end()) {
             // אם הערוץ לא קיים במפה, יוצרים ערוץ חדש
@@ -139,11 +148,23 @@ void StompProtocol::handleExit(const string& topic) {
         cerr << "User is not logged in, can't exit: " << topic << endl;
         return;
     }
- boost::unique_lock<boost::shared_mutex> writeLock(receiptCallbacksMutex); // נעילה לכתיבה
+    boost::unique_lock<boost::shared_mutex> writeLock(receiptCallbacksMutex); // נעילה לכתיבה
 
     if (topicToSubscriptionId.find(topic) == topicToSubscriptionId.end()) {
         cerr << "Not subscribed to topic: " << topic << endl;
         return;
+    }
+
+    boost::unique_lock<boost::shared_mutex> lock(channelSubscribersMutex);
+    // אם הערוץ קיים, מסירים את המשתמש מהרשימה
+    if (channelSubscribersMap.find(topic) != channelSubscribersMap.end()) {
+        channelSubscribersMap[topic].erase(username);
+        std::cout << "User " << username << " exited channel: " << topic << std::endl;
+
+        // אם הערוץ ריק, ניתן למחוק אותו
+        if (channelSubscribersMap[topic].empty()) {
+            channelSubscribersMap.erase(topic);
+        }
     }
 
     int subscriptionId = topicToSubscriptionId[topic];
@@ -273,25 +294,14 @@ void StompProtocol::createSummary(const string& channel_name, const string& user
     std::sort(sortedEvents.begin(), sortedEvents.end());
 
     for (const auto &event : events) {
-        const auto &generalInfo = event.get_general_information();
 
-         if (generalInfo.find("active") != generalInfo.end() && generalInfo.at("active") == "true")
-        {
+        if (event.getActive()) {
             activeCount++;
         }
 
-        if (generalInfo.find("forces_arrival_at_scene") != generalInfo.end() && generalInfo.at("forces_arrival_at_scene") == "true")
-        {
+        if (event.getForcesArrival()) {
             forcesArrivalCount++;
         }
-
-        // if (event.getActive()) {
-        //     activeCount++;
-        // }
-
-        // if (event.getForcesArrival()) {
-        //     forcesArrivalCount++;
-        // }
     }
 
     // פתיחת קובץ לכתיבה
@@ -321,7 +331,7 @@ void StompProtocol::createSummary(const string& channel_name, const string& user
 
         outputFile << "Report_" << i + 1 << ":\n";
         outputFile << "city: " << event.get_city() << "\n";
-        outputFile << "date time: " << event.getFormatedDateTime() << "\n";
+        outputFile << "date time: " << epochToTimeAndDate(event.get_date_time()) << "\n";
         outputFile << "event name: " << event.get_name() << "\n";
         outputFile << "summary: " << (event.get_description().size() > 27 ? event.get_description().substr(0, 27) + "..." : event.get_description()) << "\n";
 
@@ -393,22 +403,37 @@ void StompProtocol::handleMessage(Frame messageFrame) {
 
         // המרת Event ל-EmergencyEvent
         EmergencyEvent emergencyEvent(event);
-        string username = emergencyEvent.getEventOwnerUser();
 
-        // הבטחת קיום mutex עבור הערוץ (במידת הצורך)
-        ensureChannelMutexExists(destination);
-        auto channelMutex = channelMutexes[destination];
-
-        // נעילת הערוץ לעדכון ה-eventSummaryMap
         {
-             std::unique_lock<std::mutex> channelLock(*channelMutex);
-        for (auto &userEntry : eventSummaryMap[destination]) {
-            userEntry.second.push_back(emergencyEvent);
-             std::cout << "Event added for user: " << userEntry.first << std::endl;
+        boost::shared_lock<boost::shared_mutex> subLock(channelSubscribersMutex);
+        if (channelSubscribersMap.find(destination) != channelSubscribersMap.end()) {
+            ensureChannelMutexExists(destination);
+            auto channelMutex = channelMutexes[destination];
+            std::unique_lock<std::mutex> channelLock(*channelMutex);
+            for (const auto& username : channelSubscribersMap[destination]) {
+                  // מוסיפים את האירוע רק למשתמשים שרשומים לערוץ
+                eventSummaryMap[destination][username].push_back(emergencyEvent);
+                cout << "Event added for user: " << username << " in channel: " << destination << std::endl;
+             }
+        } else {
+            std::cout << "No subscribers for channel: " << destination << std::endl;
+        }
+    }
+        // string username = emergencyEvent.getEventOwnerUser();
+        // // הבטחת קיום mutex עבור הערוץ (במידת הצורך)
+        // ensureChannelMutexExists(destination);
+        // auto channelMutex = channelMutexes[destination];
 
-        }
-            // eventSummaryMap[destination][username].push_back(emergencyEvent);
-        }
+        // // נעילת הערוץ לעדכון ה-eventSummaryMap
+        // {
+        //      std::unique_lock<std::mutex> channelLock(*channelMutex);
+        // for (auto &userEntry : eventSummaryMap[destination]) {
+        //     userEntry.second.push_back(emergencyEvent);
+        //      std::cout << "Event added for user: " << userEntry.first << std::endl;
+
+        // }
+        //     // eventSummaryMap[destination][username].push_back(emergencyEvent);
+        // }
 
 
         // הדפסת מידע כללי לצורכי דיבוג
@@ -446,11 +471,22 @@ void StompProtocol::handleError(const Frame &errorFrame){
 }
 
 
-StompProtocol::StompProtocol(std::shared_ptr<ConnectionHandler> &handler)
-    : isConnectedMutex(), eventSummaryMapMutex(), receiptCallbacksMutex(),
-      CH(handler), username(""), connected(false), nextSubscriptionId(1), nextReceiptId(1),
-      topicToSubscriptionId(), receiptCallbacks(), eventSummaryMap(), shouldTerminate(false) {
-}
+StompProtocol::StompProtocol(std::shared_ptr<ConnectionHandler>& handler)
+    : isConnectedMutex(),
+      eventSummaryMapMutex(),
+      receiptCallbacksMutex(),
+      channelSubscribersMutex(), // אתחול של המנעול לערוצים
+      CH(handler),
+      username(""),
+      connected(false),
+      nextSubscriptionId(1),
+      nextReceiptId(1),
+      topicToSubscriptionId(),
+      receiptCallbacks(),
+      eventSummaryMap(),
+      shouldTerminate(false),
+      channelSubscribersMap(){}
+
 
 StompProtocol::~StompProtocol() = default;
 
