@@ -34,6 +34,7 @@ extern map<string, shared_ptr<mutex>> channelMutexes;
 // פונקציות נלוות
 void addToSummary(const Event& e, const string& username);
 void ensureChannelMutexExists(const string& channelName);
+string epochToTimeAndDate(int epochTime);
 string formatToDateTime(const string& rawDateTime);
 
 

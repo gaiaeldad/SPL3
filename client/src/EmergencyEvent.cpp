@@ -17,7 +17,7 @@ map<string, shared_ptr<mutex>> channelMutexes;
 
 EmergencyEvent::EmergencyEvent(const Event& e) 
     : Event(e), formatDateTime(""), active(false), forcesArrival(false){
-    this->formatDateTime = formatToDateTime(std::to_string(e.get_date_time()));
+    this->formatDateTime = epochToTimeAndDate(e.get_date_time());
     this->active = isFieldTrue("active", e.get_general_information());
     this->forcesArrival = isFieldTrue("forces_arrival_at_scene", e.get_general_information());
 }
@@ -56,7 +56,18 @@ void ensureChannelMutexExists(const string& channelName) {
         channelMutexes.emplace(channelName, make_shared<mutex>());
     }
 }
+string epochToTimeAndDate(int epochTime) {
+    // המרת ה-epoch ל-time_t
+    time_t rawTime = static_cast<std::time_t>(epochTime);
 
+    // המרה למבנה זמן קריא
+    tm* timeInfo = std::localtime(&rawTime);
+
+    // המרת הזמן למחרוזת בפורמט הרצוי
+    std::ostringstream oss;
+    oss << std::put_time(timeInfo, "%d/%m/%Y_%H:%M");
+    return oss.str();
+}
 
 // פונקציה להמרת תאריך לפורמט הנדרש
 string formatToDateTime(const string& rawDateTime) {
