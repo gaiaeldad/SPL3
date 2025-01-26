@@ -7,7 +7,7 @@ public class User<T> {
     private final String username;
     private final String password; // User's password
     private boolean isLoggedIn; // Tracks whether the user is logged in
-    //changed this now from map 
+    
     private final ConcurrentHashMap<Integer, String> subscriptions; // Subscription ID to Channel mapping
     private ConnectionHandler <T> connectionHandler;
     private int connectionID;
@@ -17,7 +17,7 @@ public class User<T> {
     public User( String username, String password,ConnectionHandler <T> connectionHandler, int connectionID) {
         this.username = username;
         this.password = password;
-        this.isLoggedIn = false; // Default to not logged in
+        this.isLoggedIn = false; 
         this.subscriptions = new ConcurrentHashMap<>();
         this.connectionHandler = connectionHandler;
         this.connectionID = connectionID;
@@ -32,7 +32,6 @@ public class User<T> {
     public String getPassword() {
         return password;
     }
-
 
     // Check if the user is logged in
     public boolean isLoggedIn() {

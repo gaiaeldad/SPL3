@@ -9,13 +9,13 @@ import java.net.Socket;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
-    private final MessagingProtocol<T> protocol;// make sure this works as expected 
+    private final MessagingProtocol<T> protocol;
     private final MessageEncoderDecoder<T> encdec;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
-    //i added 
+    
     private User user= null;
 
     public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol) {
@@ -27,7 +27,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     @Override
     public void run() {
-        try (Socket sock = this.sock) { // just for automatic closing
+        try (Socket sock = this.sock) { 
             int read;
 
             in = new BufferedInputStream(sock.getInputStream());
@@ -39,9 +39,6 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                     protocol.process(nextMessage);
                     
                 }
-           
-
-
             }
 
         } catch (IOException ex) {

@@ -40,8 +40,7 @@ public class UnsubscribeFrame extends Frame {
         }
     }
 
-    // Validate the "id" header to ensure it exists and is associated with the
-    // client
+    // Validate the "id" header to ensure it exists and is associated with the client 
     private void validateId() throws IOException {
         String id = headers.get("id");
 
@@ -57,35 +56,9 @@ public class UnsubscribeFrame extends Frame {
                     "Invalid Subscription:You tried to unsubscribe from a subscription that does not exist.");
         }
     }
-
-  // Remove the subscription from the server for the given client and ID
-// private void performUnsubscription() {
-//     int subscriptionId = Integer.parseInt(headers.get("id"));
-
-
-//     // Retrieve the channel associated with the subscriptionId
-//     Map<Integer, String> userSubscriptions = connections.getHandler(connectionId).getUser().getSubscriptions();
-//     String channel = userSubscriptions.get(subscriptionId);
-
-//     if (channel != null) {
-//         // Remove the subscription from the user's subscriptions
-//         userSubscriptions.remove(subscriptionId);
-
-//         // Unsubscribe from the server
-//         connections.unsubscribe(subscriptionId, connectionId);
-    
-// } 
-//     else {
-//     System.out.println("Subscription ID not found for connection: " + connectionId);
-
-// }
-//}
-
     private void performUnsubscription() {
     this.connections.unsubscribe(Integer.parseInt((String)this.headers.get("id")), this.connectionId);
  }
-
-
     @Override
     public String getCommand() {
         return "UNSUBSCRIBE";

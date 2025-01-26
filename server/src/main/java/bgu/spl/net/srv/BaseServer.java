@@ -13,9 +13,9 @@ public abstract class BaseServer<T> implements Server<T> {
     private final Supplier<MessagingProtocol<T>> protocolFactory;
     private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
     private ServerSocket sock;
-    //added this 
+    
     private ConnectionsImpl<T> connections;
-    private int connectionIdCount;////////this is the unique id!!!!!!
+    private int connectionIdCount;
 
     public BaseServer(
             int port,
@@ -35,7 +35,7 @@ public abstract class BaseServer<T> implements Server<T> {
         try (ServerSocket serverSock = new ServerSocket(port)) {
 			System.out.println("Server started");
 
-            this.sock = serverSock; //just to be able to close
+            this.sock = serverSock; 
 
             while (!Thread.currentThread().isInterrupted()) {
 
@@ -46,11 +46,9 @@ public abstract class BaseServer<T> implements Server<T> {
                     (MessageEncoderDecoder<T>) this.encdecFactory.get(),
                     (MessagingProtocol<T>) this.protocolFactory.get()
                 );
-                System.out.println("[Debug] Adding connectionId: " + connectionIdCount + " for handler: " + handler);
+                
                 connections.addConnection(connectionIdCount,handler);
-                System.out.println("[Debug] Adding connectionId: " + connectionIdCount + " with handler: " + handler);
-                connections.debugActiveConnections();
-                System.out.println("[Debug] Starting protocol for connectionId: " + connectionIdCount);
+    
                 handler.getProtocol().start(this.connectionIdCount,this.connections);
                 this.connections.addConnectionHandler(handler, this.connectionIdCount);
 

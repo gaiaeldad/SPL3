@@ -51,13 +51,9 @@
         
             String destination = headers.get("destination"); // Keep the full destination
         
-            System.out.println("[Debug] Validating destination: " + destination);
-        
             if (!connections.isDestinationLegal(destination, connectionId)) {
                 throw new IOException("Illegal destination: Channel doesn't exist or you're not subscribed to it");
             }
-        
-            System.out.println("[Debug] Destination validated successfully for channel: " + destination);
         }
         
         
@@ -65,15 +61,9 @@
 
         // Forward the message to all clients subscribed to the destination
         private void forwardMessage() {
-            // Retrieve the list of connection IDs subscribed to the channel
-            //changed this 
             LinkedList<Integer> subscribers = connections.getConnectionIdsOfChannel(headers.get("destination"));
-            System.out.println("[Debug] Forwarding message to channel: " + headers.get("destination"));
-            System.out.println("[Debug] Subscribers: " + subscribers);
-        
             // For each subscriber, send the message
             for (int subscriberId : subscribers) {
-                System.out.println("[Debug] Sending message to connectionId: " + subscriberId);
                 // Create headers for the MessageFrame
                 Map<String, String> messageHeaders = new ConcurrentHashMap<>();
                 messageHeaders.put("destination", headers.get("destination"));

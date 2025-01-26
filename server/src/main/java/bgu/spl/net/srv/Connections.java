@@ -10,7 +10,6 @@ public interface Connections<T> {
 
     void disconnect(int connectionId);
 
-    //changed again 
     void addConnection(int id,ConnectionHandler<T> handler);
 
     // Added methods for user management
@@ -36,8 +35,6 @@ public interface Connections<T> {
     void unsubscribeFromChannels (User user);
 
     boolean isDestinationLegal(String channel, int connectionId);
-    
-    void debugActiveConnections();
 
     void addConnectionHandler (ConnectionHandler<T> handler, int connectionId);
 }

@@ -5,9 +5,6 @@ import bgu.spl.net.api.MessagingProtocol;
 import java.io.Closeable;
 import java.util.function.Supplier;
 
-
-
-//this is what they gave me with no changes so far 
 public interface Server<T> extends Closeable {
 
     /**

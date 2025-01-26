@@ -19,9 +19,9 @@ public class Reactor<T> implements Server<T> {
     private final Supplier<MessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
-    //added this 
+    
     private ConnectionsImpl<T> connections;
-    private int connectionIdCount;////////this is the unique id!!!!!!
+    private int connectionIdCount;
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
@@ -47,7 +47,7 @@ public class Reactor<T> implements Server<T> {
                 ServerSocketChannel serverSock = ServerSocketChannel.open()) {
                     System.out.println("Reactor server starting on port: " + port);
 
-            this.selector = selector; //just to be able to close
+            this.selector = selector; 
             this.connections = new ConnectionsImpl();
 
             serverSock.bind(new InetSocketAddress(port));
@@ -71,7 +71,7 @@ public class Reactor<T> implements Server<T> {
                     }
                 }
 
-                selector.selectedKeys().clear(); //clear the selected keys set so that we can know about new events
+                selector.selectedKeys().clear(); 
 
             }
 
@@ -141,8 +141,6 @@ public class Reactor<T> implements Server<T> {
         }
     }
 
-
-    //chnaged 
     @Override
     public void close() throws IOException {
         for (SelectionKey key : selector.keys()) {

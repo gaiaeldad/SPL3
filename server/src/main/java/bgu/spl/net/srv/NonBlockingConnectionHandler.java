@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
 
-    private static final int BUFFER_ALLOCATION_SIZE = 1 << 13; //8k
+    private static final int BUFFER_ALLOCATION_SIZE = 1 << 13; 
     private static final ConcurrentLinkedQueue<ByteBuffer> BUFFER_POOL = new ConcurrentLinkedQueue<>();
 
     private final MessagingProtocol<T> protocol;
@@ -21,7 +21,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     private final Queue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<>();
     private final SocketChannel chan;
     private final Reactor reactor;
-    //i added 
+    
     private User user = null;
 
     public NonBlockingConnectionHandler(
@@ -29,12 +29,12 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
             MessagingProtocol<T> protocol,
             SocketChannel chan,
             Reactor reactor)
-             { // Added user parameter
+             { 
         this.chan = chan;
         this.encdec = reader;
         this.protocol = protocol;
         this.reactor = reactor;
-        // this.user = user;
+        
     }
 
     public Runnable continueRead() {
@@ -54,7 +54,7 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
                     while (buf.hasRemaining()) {
                         T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
-                             protocol.process(nextMessage);//chnaged this 
+                             protocol.process(nextMessage);
                            
                         }
                     }
@@ -145,7 +145,6 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
 
     //unlike the blocking can write firectly to the output stream 
     //need to use a buffer to manage the I\O
-    
     @Override
     public void send(T msg) {
     if (msg != null) {
@@ -153,20 +152,18 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);}
 }
 
-    
-
     @Override
     public User getUser() {
-        return user; // Return the associated user
+        return user; 
     }
 
     @Override
     public void setUser(User user) {
     this.user = user;
 }
-@Override
-public MessagingProtocol<T> getProtocol() {
-return protocol;
-}
+    @Override
+    public MessagingProtocol<T> getProtocol() {
+    return protocol;
+    }
 
 }

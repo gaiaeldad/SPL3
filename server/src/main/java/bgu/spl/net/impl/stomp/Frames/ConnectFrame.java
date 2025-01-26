@@ -69,8 +69,7 @@ public class ConnectFrame extends Frame {
         }
     }
 
-    // Validate the "login" and "passcode" headers and check if the user is allowed
-    // to log in
+    // Validate the "login" and "passcode" headers and check if the user is allowed to log in 
     private void validateCredentials() throws IOException {
         String login = headers.get("login");
         String passcode = headers.get("passcode");

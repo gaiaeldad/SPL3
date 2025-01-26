@@ -66,7 +66,7 @@ public class FrameParser {
 }
 
 
-    // Factory method to create the appropriate Frame object
+    //  method to create the appropriate Frame object
     private static Frame createFrame(String command, int connectionId, 
                                      ConcurrentHashMap<String, String> headers, 
                                      String body, 
