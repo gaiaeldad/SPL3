@@ -165,35 +165,17 @@ public class ConnectionsImpl<T> implements Connections<T> {
 
     // Helper method to subscribe a connection to a channel
     
-    @Override
-    public void subscribe(int connectionId, int subscriptionId, String channel) {
-        // Add the subscription to the user's subscription list
-        ConnectionHandler<T> handler = connectionHandlers.get(connectionId);
-        if (handler == null) {
-            System.out.println("[Error] ConnectionHandler is null for connectionId: " + connectionId);
-            return;
-        }
-        System.out.println("[Debug] Handler found for connectionId: " + connectionId);
-    
-        User user = handler.getUser();
-        if (user == null) {
-            System.out.println("[Error] User is null for connectionId: " + connectionId);
-            return;
-        }
-    
-        // Add to the user's subscriptions
-        Map<Integer, String> subscriptions = user.getSubscriptions();
+    public void subscribe( int subscriptionId, int connectionId, String channel) {
+        Map<Integer, String> subscriptions = connectionHandlers.get(connectionId).getUser().getSubscriptions();
         subscriptions.put(subscriptionId, channel);
     
-        // Add the connectionId to the channel's subscriber list
+        // Initialize the channel if it doesn't exist
         channels.computeIfAbsent(channel, key -> new CopyOnWriteArraySet<>());
-        synchronized (channels.get(channel)) {
-            channels.get(channel).add(connectionId);
-        }
+        channels.get(channel).add(connectionId);
     
         System.out.println("[Debug] Subscribed connectionId " + connectionId + " to channel " + channel);
-        System.out.println("[Debug] Current channels map: " + channels);
     }
+    
     
 
     
