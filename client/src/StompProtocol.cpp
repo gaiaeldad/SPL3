@@ -13,12 +13,6 @@
 
 using namespace std;
 
-// std::mutex connectionMutex;
-// std::condition_variable connectionCV;
-// bool connectionInitialized = false;
-
-
-
 //keybordThred
 
 
