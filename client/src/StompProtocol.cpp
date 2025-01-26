@@ -321,7 +321,7 @@ void StompProtocol::createSummary(const string& channel_name, const string& user
 
         outputFile << "Report_" << i + 1 << ":\n";
         outputFile << "city: " << event.get_city() << "\n";
-        outputFile << "date time: " << event.get_date_time() << "\n";
+        outputFile << "date time: " << event.getFormatedDateTime() << "\n";
         outputFile << "event name: " << event.get_name() << "\n";
         outputFile << "summary: " << (event.get_description().size() > 27 ? event.get_description().substr(0, 27) + "..." : event.get_description()) << "\n";
 
