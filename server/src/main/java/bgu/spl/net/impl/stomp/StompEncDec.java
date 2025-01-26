@@ -12,7 +12,6 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
 
     @Override
     public String decodeNextByte(byte nextByte) {
-        System.out.println("Decoding byte: " + nextByte);
         if (nextByte == '\0') { 
             return this.popString(); // Return the complete message
         }
@@ -22,7 +21,6 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
 
     @Override
     public byte[] encode(String message) {
-        System.out.println("Encoding message: " + message);
         // Append '\u0000' as the delimiter and convert the message to bytes
         return (message + '\u0000').getBytes(StandardCharsets.UTF_8);
     }
@@ -30,7 +28,6 @@ public class StompEncDec implements MessageEncoderDecoder<String> {
     private String popString() {
         // Convert the buffer to a String using UTF-8, reset the buffer, and return the  message
         String result = new String(buffer, 0, length, StandardCharsets.UTF_8);
-        System.out.println("Decoded message: " + result);
         length = 0; // Reset buffer
         return result;
     }

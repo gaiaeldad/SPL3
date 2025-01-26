@@ -11,7 +11,6 @@ public class FrameParser {
 
     // Main method to parse a message into a Frame
     public static Frame parseFrame(String rawMessage, Connections<String> connections, int connectionId) {
-        System.out.println("Parsing message into frame: " + rawMessage);
         Queue<String> messageLines = new ArrayDeque<>(Arrays.asList(rawMessage.split("\\n")));
 
         // Extract command type
