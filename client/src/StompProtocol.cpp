@@ -96,6 +96,26 @@ void StompProtocol::handleJoin(const string& topic) {
     topicToSubscriptionId[topic] = nextSubscriptionId;
     receiptCallbacks[nextReceiptId] = "Joined topic: " + topic;
 
+     boost::unique_lock<boost::shared_mutex> mapWriteLock(eventSummaryMapMutex);
+        if (eventSummaryMap.find(topic) == eventSummaryMap.end()) {
+            // אם הערוץ לא קיים במפה, יוצרים ערוץ חדש
+            eventSummaryMap[topic] = map<string, vector<EmergencyEvent>>();
+            std::cout << "[Debug] Created new topic in eventSummaryMap: " << topic << std::endl;
+        }
+
+        // מוסיפים את המשתמש למפה תחת הערוץ
+        if (eventSummaryMap[topic].find(username) == eventSummaryMap[topic].end()) {
+            eventSummaryMap[topic][username] = vector<EmergencyEvent>();
+            cout << "[Debug] Added user: " << username << " to topic: " << topic << endl;
+        }
+
+        cout << "[Debug] eventSummaryMap after update for topic: " << topic << std::endl;
+        for (const auto& channel : eventSummaryMap) {
+            std::cout << "  Channel: " << channel.first << std::endl;
+            for (const auto& user : channel.second) {
+                std::cout << "    User: " << user.first << ", Number of events: " << user.second.size() << std::endl;
+            }
+        }
 // יצירת פריים SUBSCRIBE
     string frame = "SUBSCRIBE\ndestination:" + topic +
                    "\nid:" + to_string(nextSubscriptionId) +
@@ -208,7 +228,8 @@ void StompProtocol::handleLogout() {
         return;
     }
     // יצירת פריים DISCONNECT
-    string frame = "DISCONNECT\nreceipt:" + to_string(nextReceiptId) + "\n\n\0"; // לבדוק אם ליצור ככה או פריים
+    connected = false;
+    string frame = "DISCONNECT\nreceipt:" + to_string(nextReceiptId) + "\n\n\0"; 
     if (!CH->sendFrameAscii(frame, '\0'))
     {
         std::cerr << "Failed to send DISCONNECT frame to the server." << std::endl;
@@ -217,7 +238,7 @@ void StompProtocol::handleLogout() {
     boost::unique_lock<boost::shared_mutex> receiptLock(receiptCallbacksMutex);
     receiptCallbacks[nextReceiptId] = "Logged out.";
     nextReceiptId++;
-    connected = false;
+    // connected = false;
 }
 
 void StompProtocol::createSummary(const string& channel_name, const string& user, const string& file) {
