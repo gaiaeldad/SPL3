@@ -40,21 +40,31 @@ public class SubscribeFrame extends Frame {
         }
     }
 
-    // Validate the "id" header to ensure it exists and is unique for the client
+    // // Validate the "id" header to ensure it exists and is unique for the client
+    //this is my old function 
+    // private void validateSubscriptionId() throws IOException {
+    //     String id = headers.get("id");
+
+    //     if (id == null) {
+    //         throw new IOException("Missing Header:SUBSCRIBE frame must include the 'id' header.");
+    //     }
+
+    //     int subscriptionId = Integer.parseInt(id);
+
+    //     if (connections.getHandler(connectionId).getUser().getSubscriptions().containsKey(subscriptionId)) {
+    //         throw new IOException(
+    //                 "Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
+    //     }
+    // }
+
+
     private void validateSubscriptionId() throws IOException {
-        String id = headers.get("id");
-
-        if (id == null) {
-            throw new IOException("Missing Header:SUBSCRIBE frame must include the 'id' header.");
+        if (!this.headers.containsKey("id")) {
+           throw new IOException("Frame doesn't contain id header:SUBSCRIBE frame must contain id header");
+        } else if (this.connections.getHandler(this.connectionId).getUser().getSubscriptions().containsKey(Integer.parseInt((String)this.headers.get("id")))) {
+           throw new IOException("id is not unique:You tried to subscribe to an already subscribed channel");
         }
-
-        int subscriptionId = Integer.parseInt(id);
-
-        if (connections.getHandler(connectionId).getUser().getSubscriptions().containsKey(subscriptionId)) {
-            throw new IOException(
-                    "Duplicate Subscription:You are already subscribed to this channel with id '" + id + "'.");
-        }
-    }
+     }
 
     // Validate the "destination" header to ensure it exists
     private void validateDestination() throws IOException {
