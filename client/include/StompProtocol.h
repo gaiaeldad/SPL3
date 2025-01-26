@@ -25,7 +25,6 @@ private:
     mutable boost::shared_mutex isConnectedMutex;
     mutable boost::shared_mutex eventSummaryMapMutex;
     mutable boost::shared_mutex receiptCallbacksMutex;
-    boost::shared_mutex channelSubscribersMutex; // הגנה מפני גישה בו-זמנית
 
      // fildes
     std::shared_ptr<ConnectionHandler>& CH;
@@ -37,7 +36,6 @@ private:
     map<int, std::string> receiptCallbacks;
     map<std::string, std::map<string, vector<EmergencyEvent>>> eventSummaryMap; // topic, username, emergencyEvent
     bool shouldTerminate;
-    std::map<std::string, std::set<std::string>> channelSubscribersMap; // topic -> set of usernames
 
 
     // keboard fanctions
