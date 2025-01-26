@@ -17,8 +17,6 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 bool ConnectionHandler::connect() {
-    std::cout << "Starting connect to " << host_ << ":" << port_ << std::endl;
-	std::cout << " got to connect Socket open status before connect: " << socket_.is_open() << std::endl;
 
 	try {
 		tcp::endpoint endpoint(boost::asio::ip::address::from_string(host_), port_); // the server endpoint

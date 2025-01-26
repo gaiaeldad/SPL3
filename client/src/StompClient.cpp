@@ -21,19 +21,14 @@ int main(int argc, char* argv[]) {
     // Thread for user input
     thread keyboardThread([&]() {
         string input;
-        cout << " Keyboard thread started." << endl;
 
         while (getline(cin, input) && !stompProtocol.isshouldTerminate()) {
             stompProtocol.keyboardLoop(input);
-             cout << " Keyboard got here1" << endl;
-             cout << "Checking condition: connectionHandler is1 " << (CH ? "initialized" : "nullptr") << endl;
-            cout << "Checking condition: firsConnect is " << (firsConnect ? "true" : "false") << endl;
-
+             
             // Notify the server listener thread after login
             if (CH && !firsConnect) {
                 unique_lock<mutex> lock(connectionMutex);
                 firsConnect = true;
-                cout << "Keyboard got here2" << endl;
                 connectionCV.notify_one();
             }
         }
@@ -45,7 +40,6 @@ int main(int argc, char* argv[]) {
         while (true) {
             unique_lock<mutex> lock(connectionMutex);
             connectionCV.wait(lock, [&]() { return CH != nullptr || stompProtocol.isshouldTerminate(); }); // ממתין לחיבור או לסיום
-             cout << " Server thread started1" << endl;
             if (stompProtocol.isshouldTerminate()) {
             break; // יציאה אם הקליינט צריך להסתיים
             }

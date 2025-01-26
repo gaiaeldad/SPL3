@@ -18,19 +18,15 @@ using namespace std;
 
 void StompProtocol::handleLogin(const string& hostPort, const string& username, const string& password) {
      boost::unique_lock<boost::shared_mutex> lock(isConnectedMutex);
-     cout << "got to handle login"<< endl;
 
     if (connected) {
-        cerr << "The client is already logged in, log out before trying again." << endl;
+        cerr << "The client is already logged in, log out before trying again" << endl;
         return;
     }
-    cout << "got to 1"<< endl;
     size_t colonPos = hostPort.find(':');
-    cout << "got to 2"<< endl;
     if (colonPos == string::npos) {
         throw runtime_error("Invalid host:port format");
     }
-    cout << "got to 3"<< endl;
     string host = hostPort.substr(0, colonPos);
     short port = static_cast<short>(stoi(hostPort.substr(colonPos + 1)));
 
@@ -41,18 +37,15 @@ void StompProtocol::handleLogin(const string& hostPort, const string& username, 
 
     try{
         // עדכון המצביע המשותף
-        cout << "tring to create connection hendler"<<  host << port << endl;
         CH = make_shared<ConnectionHandler>(host, port);
     }
     catch (const std::exception &e) {
         std::cerr << "[Error] Invalid port number: " << e.what() << std::endl;
         return;
     }
-    cout << "create connection hendler"<<  host << port << endl;
-    cout << "Checking condition: connectionHandler is " << (CH ? "initialized" : "nullptr") << endl;
 
     if(!CH->connect()){
-        std::cerr << "Coulden't connect to server...." << std::endl;
+        std::cerr << "Could not connect to server" << std::endl;
         CH.reset();
         return;
     }
@@ -70,8 +63,6 @@ void StompProtocol::handleLogin(const string& hostPort, const string& username, 
         return;
     }
     connected = true;
-    cout << "Checking condition:2 connectionHandler is " << (CH ? "initialized" : "nullptr") << endl;
-
 
 }
 
@@ -100,22 +91,13 @@ void StompProtocol::handleJoin(const string& topic) {
         if (eventSummaryMap.find(topic) == eventSummaryMap.end()) {
             // אם הערוץ לא קיים במפה, יוצרים ערוץ חדש
             eventSummaryMap[topic] = map<string, vector<EmergencyEvent>>();
-            std::cout << "[Debug] Created new topic in eventSummaryMap: " << topic << std::endl;
         }
 
         // מוסיפים את המשתמש למפה תחת הערוץ
         if (eventSummaryMap[topic].find(username) == eventSummaryMap[topic].end()) {
             eventSummaryMap[topic][username] = vector<EmergencyEvent>();
-            cout << "[Debug] Added user: " << username << " to topic: " << topic << endl;
         }
 
-        cout << "[Debug] eventSummaryMap after update for topic: " << topic << std::endl;
-        for (const auto& channel : eventSummaryMap) {
-            std::cout << "  Channel: " << channel.first << std::endl;
-            for (const auto& user : channel.second) {
-                std::cout << "    User: " << user.first << ", Number of events: " << user.second.size() << std::endl;
-            }
-        }
 // יצירת פריים SUBSCRIBE
     string frame = "SUBSCRIBE\ndestination:" + topic +
                    "\nid:" + to_string(nextSubscriptionId) +
@@ -394,17 +376,8 @@ void StompProtocol::handleMessage(Frame messageFrame) {
              std::unique_lock<std::mutex> channelLock(*channelMutex);
         for (auto &userEntry : eventSummaryMap[destination]) {
             userEntry.second.push_back(emergencyEvent);
-             std::cout << "Event added for user: " << userEntry.first << std::endl;
 
         }
-            // eventSummaryMap[destination][username].push_back(emergencyEvent);
-        }
-
-
-        // הדפסת מידע כללי לצורכי דיבוג
-        const auto &generalInfo = emergencyEvent.get_general_information();
-        for (const auto &entry : generalInfo) {
-            std::cout << "General Info Key: " << entry.first << ", Value: " << entry.second << std::endl;
         }
     }
     catch (const std::exception &e) {
@@ -494,7 +467,7 @@ void StompProtocol::keyboardLoop(const string& input) {
 }
 
 
-void StompProtocol::handleServerResponse(const string &recivedResponse){ //------------------come back
+void StompProtocol::handleServerResponse(const string &recivedResponse){ 
      // הפיכת ה-STRING ל-FRAME
         Frame response = Frame::parseFrame(recivedResponse);
         handleFrame(response);
@@ -505,7 +478,7 @@ void StompProtocol::handleFrame(const Frame& response) {
     if (command == "CONNECTED") {
         connected = true;
         cout << "Login successful." << endl;
-    } else if (command == "RECEIPT") { //--------------------------------------- come back---
+    } else if (command == "RECEIPT") { 
         handleReceipt(response);
     } else if (command == "ERROR") {
         handleError(response);
