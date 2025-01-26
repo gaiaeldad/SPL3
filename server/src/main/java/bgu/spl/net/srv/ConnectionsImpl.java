@@ -40,6 +40,8 @@ public class ConnectionsImpl<T> implements Connections<T> {
     //sends to clients subscribed to the channel 
     public void send(String channel, T msg) {
         CopyOnWriteArraySet<Integer> subscribers = channels.get(channel);
+        System.out.println("[Debug] Subscribers for channel " + channel + ": " + channels.get(channel));
+
         if (subscribers != null) {
             synchronized (subscribers){
             for (int connectionId : subscribers) {
@@ -168,10 +170,15 @@ public class ConnectionsImpl<T> implements Connections<T> {
     public void subscribe( int subscriptionId, int connectionId, String channel) {
         Map<Integer, String> subscriptions = connectionHandlers.get(connectionId).getUser().getSubscriptions();
         subscriptions.put(subscriptionId, channel);
+        System.out.println("[Debug] Subscribed connectionId " + connectionId + " to channel " + channel);
+        
+
     
         // Initialize the channel if it doesn't exist
         channels.computeIfAbsent(channel, key -> new CopyOnWriteArraySet<>());
         channels.get(channel).add(connectionId);
+        System.out.println("[Debug] Current subscribers for channel " + channel + ": " + channels.get(channel));
+
     
         System.out.println("[Debug] Subscribed connectionId " + connectionId + " to channel " + channel);
     }

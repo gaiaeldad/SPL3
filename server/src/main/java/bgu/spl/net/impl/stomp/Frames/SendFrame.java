@@ -66,7 +66,8 @@
         // Forward the message to all clients subscribed to the destination
         private void forwardMessage() {
             // Retrieve the list of connection IDs subscribed to the channel
-            LinkedList<Integer> subscribers = connections.getConnectionIdsOfChannel(headers.get("destination").substring(1));
+            //changed this 
+            LinkedList<Integer> subscribers = connections.getConnectionIdsOfChannel(headers.get("destination"));
             System.out.println("[Debug] Forwarding message to channel: " + headers.get("destination"));
             System.out.println("[Debug] Subscribers: " + subscribers);
         
