@@ -1,77 +1,75 @@
-#pragma once
+#ifndef STOMPCLIENT_H
+#define STOMPCLIENT_H
 
-#include "../include/ConnectionHandler.h"
-#include "../include/Frame.h"
-#include "../include/event.h"
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <map>
+#include <vector>
 #include <string>
+#include <memory>
+#include "ConnectionHandler.h"
+#include "Frame.h"
+#include "EmergencyEvent.h"
+#include <shared_mutex>
 #include <boost/thread/shared_mutex.hpp>
-#include <unordered_map>
-#include <fstream>
-#include <unordered_set>
 
-using std::pair;
-using std::string;
 
-// Custom hash for std::pair
-struct pair_hash
-{
-    template <class T1, class T2>
-    std::size_t operator()(const std::pair<T1, T2> &pair) const
-    {
-        auto hash1 = std::hash<T1>{}(pair.first);
-        auto hash2 = std::hash<T2>{}(pair.second);
-        return hash1 ^ (hash2 << 1); // Combine the two hashes
-    }
-};
+using namespace std;
 
-class StompProtocol
-{
+class StompProtocol {
 private:
-    // לפי הסדר שמופיע ב-CPP:
-    std::shared_ptr<ConnectionHandler>& connectionHandler; // הפניה למצביע משותף
+    // lockes
     mutable boost::shared_mutex isConnectedMutex;
-    mutable boost::shared_mutex reportFromOtherUsersMutex;
-    mutable boost::shared_mutex receiptToStringMutex;
+    mutable boost::shared_mutex eventSummaryMapMutex;
+    mutable boost::shared_mutex receiptCallbacksMutex;
+     // fildes
+    std::shared_ptr<ConnectionHandler>& CH;
+    string username;
+    bool connected;
+    int nextSubscriptionId;
+    int nextReceiptId;
+    map<string, int> topicToSubscriptionId;
+    map<int, std::string> receiptCallbacks;
+    map<std::string, std::map<string, vector<EmergencyEvent>>> eventSummaryMap;
+    bool shouldTerminate;
 
-    bool isConnected;
-    string myUsername;
-    unordered_map<string, int> subscriptions;                                           // מפה לsubscriptionId
-    unordered_map<pair<string, string>, vector<Event>, pair_hash> reportFromOtherUsers; // לsummary
-    unordered_map<int, string> receiptToString;                                         // לפי קבלה אומר מה להדפיס למסך
-    int subscriptionId = 1;                                                             // מזהה ייחודי למנויים
-    int receiptId = 1;                                                                  // מזהה ייחודי לקבלות
-    bool terminateClient;
+    // keboard fanctions
 
-    // from console
-    void processLogin(const string &input);
-    void processJoin(const string &input);
-    void processExit(const string &input);
-    void processReport(const string &input);
-    void processSummary(const string &input);
-    void logout();
-    string trim(const std::string &str);
+private:
+    //keybordThred
+    void handleLogin(const string& hostPort, const string& username, const string& password);
+    void handleJoin(const string& topic);
+    void handleExit(const string& topic);
+    void handleReport(const string& file);
+    void handleLogout();
+    void createSummary(const string& channel_name, const string& user, const string& file);
 
-    // from server
-    Frame parseFrame(const std::string &response);
-    void handleConnected(Frame frame);
-    void handleMessage(Frame frame);
-    void handleReceipt(Frame frame);
+    //serverReaderThred
+    void handleReceipt(Frame connectFrame);
+    void handleMessage(Frame messageFrame);
     void handleError(const Frame &errorFrame);
 
 public:
-    // שינוי הבנאי לקבל הפניה למצביע משותף
+    StompProtocol(); // Default constructor
     StompProtocol(std::shared_ptr<ConnectionHandler>& handler);
-
+    // Rule of 3
     StompProtocol(const StompProtocol &) = delete;             // Copy Constructor
     StompProtocol &operator=(const StompProtocol &) = delete;  // Assignment Operator
+    ~StompProtocol();
 
+    void keyboardLoop(const string& input);
     void handleServerResponse(const string &response);
-    void processKeyboard(string input);
+    void handleFrame(const Frame& response);
 
-    int countWords(std::istringstream &iss);
-    string getCurrentUsername() const;
-    bool TerminateClient();
+    bool isshouldTerminate();
+    void setShouldTerminate(bool value);
+    
+
+    vector<string> splitString(const string& str, char delimiter);
+    string getUsername() const;
     bool IsConnected();
 
-    ~StompProtocol();
 };
+
+#endif // STOMPCLIENT_H

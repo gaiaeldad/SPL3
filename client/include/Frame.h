@@ -1,35 +1,35 @@
-#pragma once
+#ifndef FRAME_H
+#define FRAME_H
 
 #include <string>
-#include <unordered_map>
-#include <vector>
-
-using std::string;
-using std::unordered_map;
-using std::vector;
+#include <map>
+using namespace std;
 
 class Frame {
-private:
-    string command;
-    unordered_map<string, string> headers;
-    string body;
-
 public:
-    Frame(const string& command, unordered_map<string, string> headers, string body);
-    Frame(const string& command);
+    string command;   // Command of the frame (e.g., CONNECT, SUBSCRIBE, etc.)
+    map<string, string> headers; // Headers as key-value pairs
+    string body;                        // Body of the frame
+
     Frame();
-
-    string getCommand() const;
-    void setCommand(const string& command);
-
-    void addHeader(const string& key, const string& value);
-    string getHeader(const string& key) const;
-    unordered_map<string, string> getHeaders() const;
-
-    string getBody() const;
-    void setBody(const string& body);
-    
+    // Parses a raw STOMP frame string into a Frame object
+    Frame(const string& command);
+    //for empty frame
+    static Frame parse(const string& rawFrame);
+    // Converts a Frame object into a raw STOMP frame string
     string toString() const;
+    //getter methods we added
+    string getCommand() const;
+    string getHeader(const string& key) const;
+    map<string, string> getHeaders() const;
+    string getBody() const;
+    void addHeader(const string& key, const string& value);
+    void setBody(const string& body);
+    ///
+    static Frame parseFrame(const string& rawFrame);
+    static string trim(const string &str);
 
-    ~Frame();
+
 };
+
+#endif // FRAME_H

@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <boost/asio.hpp>
+#include "Frame.h"
 
 using boost::asio::ip::tcp;
 
@@ -14,6 +15,7 @@ private:
 	tcp::socket socket_;
 
 public:
+
 	ConnectionHandler(std::string host, short port);
 
 	virtual ~ConnectionHandler();
@@ -47,9 +49,5 @@ public:
 
 	// Close down the connection properly.
 	void close();
-
-	std::string getHost() const;
-
-	short getPort() const;
 
 }; //class ConnectionHandler
