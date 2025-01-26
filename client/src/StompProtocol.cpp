@@ -380,9 +380,15 @@ void StompProtocol::handleMessage(Frame messageFrame) {
 
         // נעילת הערוץ לעדכון ה-eventSummaryMap
         {
-            std::unique_lock<std::mutex> channelLock(*channelMutex);
-            eventSummaryMap[destination][username].push_back(emergencyEvent);
+             std::unique_lock<std::mutex> channelLock(*channelMutex);
+        for (auto &userEntry : eventSummaryMap[destination]) {
+            userEntry.second.push_back(emergencyEvent);
+             std::cout << "Event added for user: " << userEntry.first << std::endl;
+
         }
+            // eventSummaryMap[destination][username].push_back(emergencyEvent);
+        }
+
 
         // הדפסת מידע כללי לצורכי דיבוג
         const auto &generalInfo = emergencyEvent.get_general_information();
