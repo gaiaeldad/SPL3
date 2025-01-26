@@ -32,7 +32,7 @@ public class StompServer {
                 ).serve();
                 break;
 
-            case "thread-per-client":
+            case "tpc":
                 Server.threadPerClient(
                     port,
                     () -> new StompMessageProtoclImpl(), // Lambda for protocol factory

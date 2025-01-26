@@ -18,6 +18,9 @@ public class ConnectFrame extends Frame {
             validateAcceptVersion(); // Validate the "accept-version" header
             validateHost(); // Validate the "host" header
             validateCredentials(); // Validate "login" and "passcode" headers
+
+            System.out.println("got connected frame");
+
         } catch (IOException e) {
             // If validation fails, handle the error and stop further processing
             loginSuccessful = false;

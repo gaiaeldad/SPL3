@@ -7,14 +7,21 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <memory>
 #include "ConnectionHandler.h"
 #include "Frame.h"
 #include "EmergencyEvent.h"
+
 using namespace std;
+
+extern std::mutex connectionMutex;
+extern std::condition_variable connectionCV;
+extern bool connectionInitialized;
+
 
 class StompProtocol {
 private:
-    ConnectionHandler* CH;
+    std::shared_ptr<ConnectionHandler> CH;
     string username;
     bool connected;
     int nextSubscriptionId;
@@ -33,28 +40,30 @@ private:
     bool isRunning;
 
 public:
-    StompProtocol(); // בנאי ברירת מחדל
-    StompProtocol(ConnectionHandler* connectionHandler); // **בנאי מותאם אישית**
-    //rule of 3
+    StompProtocol(); // Default constructor
+    StompProtocol(std::shared_ptr<ConnectionHandler> &handler);
+    // Rule of 3
     StompProtocol(const StompProtocol& SP);
     StompProtocol& operator=(const StompProtocol&);
     ~StompProtocol();
+    
+    bool isshouldTerminate();
+    void setShouldTerminate(bool value);
     void start();
     void stop();
-    
+    void keyboardLoop(const string& input);
+    void handleFrame(const Frame& response);
 
 private:
-    void keyboardLoop();
+    void sendFrame(const Frame& frame);
     Frame handleLogin(const string& hostPort, const string& username, const string& password);
     Frame handleJoin(const string& topic);
     Frame handleExit(const string& topic);
     Frame handleReport(const string& file);
     Frame handleLogout();
-    void sendFrame(const Frame& frame);
     void createSummary(const string& channel_name, const string& user, const string& file);
     bool isReceiptValid(const Frame& frame, int receiptId);
     void readLoop();
-    void handleFrame(const Frame& response);
     vector<string> splitString(const string& str, char delimiter);
 };
 

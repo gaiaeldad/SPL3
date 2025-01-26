@@ -5,20 +5,26 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iomanip>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
+std::mutex connectionMutex;
+std::condition_variable connectionCV;
+bool connectionInitialized = false;
 
-StompProtocol::StompProtocol(ConnectionHandler* connectionHandler)
-    : CH(connectionHandler), username(""), connected(false), nextSubscriptionId(0), nextReceiptId(0),
+StompProtocol::StompProtocol(std::shared_ptr<ConnectionHandler> &handler)
+    : CH(handler), username(""), connected(false), nextSubscriptionId(0), nextReceiptId(0),
       receiptDisconnect(-1), topicToSubscriptionId(), gotReceipt(), gotReceiptMutex(), 
       receiptCallbacks(), receiptCallbacksMutex(), eventSummaryMap(), eventSummaryMapMutex(),
       readThread(), keyboardThread(), shouldTerminate(false), isRunning(false) {
 
 }
-StompProtocol::StompProtocol(const StompProtocol& SP){}
 
-StompProtocol& StompProtocol::operator=(const StompProtocol&){
+StompProtocol::StompProtocol(const StompProtocol& SP) {}
+
+StompProtocol& StompProtocol::operator=(const StompProtocol&) {
     return *this;
 }
 
@@ -26,10 +32,18 @@ StompProtocol::~StompProtocol() {
     if (isRunning) {
         stop();   
     }
-    delete CH;
 }
-void StompProtocol::start() {
 
+bool StompProtocol::isshouldTerminate(){
+    return shouldTerminate;
+}
+
+void StompProtocol::setShouldTerminate(bool value) {
+    shouldTerminate = value;
+}
+
+
+void StompProtocol::start() {
     if (isRunning) {
         cerr << "Client is already running, stop it and try again." << endl;
         return;
@@ -37,16 +51,39 @@ void StompProtocol::start() {
 
     isRunning = true;
 
+    keyboardThread = thread([this]() {
+        string input;
+        while (getline(cin, input) && !shouldTerminate) {
+            keyboardLoop(input);
 
-    // הפעלת לולאות הקלט והפלט
-    keyboardThread = thread([this]() { keyboardLoop(); });
-    readThread = thread([this]() { readLoop(); });
+            if (!connectionInitialized && CH != nullptr) {
+                unique_lock<mutex> lock(connectionMutex);
+                connectionInitialized = true;
+                connectionCV.notify_one();
+            }
+        }
+    });
 
-    // המתנה לסיום הלולאות
+    readThread = thread([this]() {
+        {
+            unique_lock<mutex> lock(connectionMutex);
+            connectionCV.wait(lock, []() { return connectionInitialized; });
+        }
+
+        while (!shouldTerminate) {
+            Frame response;
+            if (CH != nullptr && CH->getFrame(response)) {
+                handleFrame(response);
+            } else {
+                cerr << "[Error] Failed to receive response or connection is null." << endl;
+                shouldTerminate = true;
+            }
+        }
+    });
+
     keyboardThread.join();
     readThread.join();
 }
-
 
 void StompProtocol::stop() {
     if (!isRunning) {
@@ -55,7 +92,9 @@ void StompProtocol::stop() {
     }
 
     shouldTerminate = true;
-    CH->close();
+    if (CH) {
+        CH->close();
+    }
 
     if (readThread.joinable()) {
         readThread.join();
@@ -71,63 +110,87 @@ void StompProtocol::stop() {
     cout << "Client stopped." << endl;
 }
 
+void StompProtocol::keyboardLoop(const string& input) {
+    Frame frame;
+    vector<string> tokens = splitString(input, ' ');
 
+    if (tokens.empty()) return;
 
-void StompProtocol::keyboardLoop() {
-    while (!shouldTerminate) {
-        string line;
-        getline(cin, line);
-        Frame frame;
-        vector<string> tokens = splitString(line, ' ');
-
-        if (tokens.empty()) continue;
-
-        try {
-            if (tokens[0] == "login") {
-                if (tokens.size() != 4) {
-                    cout << "Usage: login <host:port> <username> <password>" << endl;
-                    continue;
-                }
-                frame = handleLogin(tokens[1], tokens[2], tokens[3]);
-            } else if (tokens[0] == "join") {
-                if (tokens.size() != 2) {
-                    cout << "Usage: join <topic>" << endl;
-                    continue;
-                }
-                frame = handleJoin(tokens[1]);
-            } else if (tokens[0] == "exit") {
-                if (tokens.size() != 2) {
-                    cout << "Usage: exit <topic>" << endl;
-                    continue;
-                }
-                frame = handleExit(tokens[1]);
-            } else if (tokens[0] == "report") {
-                if (tokens.size() != 2) {
-                    cout << "Usage: report <file>" << endl;
-                    continue;
-                }
-                frame = handleReport(tokens[1]);
-            } else if (tokens[0] == "logout") {
-                frame = handleLogout();
-            } else if (tokens[0] == "summary") {
-                if (tokens.size() != 4) {
-                    cout << "Usage: summary <channel_name> <user> <file>" << endl;
-                    continue;
-                }
-                createSummary(tokens[1], tokens[2], tokens[3]);
-            } else {
-                cout << "Unknown command" << endl;
+    try {
+        if (tokens[0] == "login") {
+            if (tokens.size() != 4) {
+                cout << "Usage: login <host:port> <username> <password>" << endl;
+                return;
             }
-
-            if (!frame.command.empty()) {
-                //---------------------------------------------
-                cout<< "got to send frame"<< frame.toString()<< endl;
-                sendFrame(frame);
+            frame = handleLogin(tokens[1], tokens[2], tokens[3]);
+        } else if (tokens[0] == "join") {
+            if (tokens.size() != 2) {
+                cout << "Usage: join <topic>" << endl;
+                return;
             }
-
-        } catch (const exception& e) {
-            cerr << "Error: " << e.what() << endl;
+            frame = handleJoin(tokens[1]);
+        } else if (tokens[0] == "exit") {
+            if (tokens.size() != 2) {
+                cout << "Usage: exit <topic>" << endl;
+                return;
+            }
+            frame = handleExit(tokens[1]);
+        } else if (tokens[0] == "report") {
+            if (tokens.size() != 2) {
+                cout << "Usage: report <file>" << endl;
+                return;
+            }
+            frame = handleReport(tokens[1]);
+        } else if (tokens[0] == "logout") {
+            frame = handleLogout();
+        } else if (tokens[0] == "summary") {
+            if (tokens.size() != 4) {
+                cout << "Usage: summary <channel_name> <user> <file>" << endl;
+                return;
+            }
+            createSummary(tokens[1], tokens[2], tokens[3]);
+        } else {
+            cout << "Unknown command" << endl;
         }
+
+        if (!frame.command.empty()) {
+            sendFrame(frame);
+        }
+
+    } catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
+}
+
+void StompProtocol::handleFrame(const Frame& response) {
+    if (response.command == "CONNECTED") {
+        connected = true;
+        cout << "Login successful." << endl;
+    } else if (response.command == "RECEIPT") {
+        int receiptId = stoi(response.headers.at("receipt-id"));
+
+        lock_guard<mutex> gotReceiptLock(gotReceiptMutex);
+        if (gotReceipt[receiptId]) {
+            lock_guard<mutex> receiptCallbacksLock(receiptCallbacksMutex);
+            cout << receiptCallbacks[receiptId] << endl;
+            gotReceipt.erase(receiptId);
+            receiptCallbacks.erase(receiptId);
+        }
+        if (receiptId == receiptDisconnect) {
+            stop();
+        }
+    } else if (response.command == "ERROR") {
+        cerr << "Error frame received: " << response.body << endl;
+    } else {
+        cerr << "Unexpected frame received: " << response.command << endl;
+    }
+}
+
+void StompProtocol::sendFrame(const Frame& frame) {
+    string frameStr = frame.toString();
+    if (!CH->sendFrameAscii(frameStr, '\0')) {
+        CH->close();
+        cerr << "Failed to send frame: " << frame.command << endl;
     }
 }
 
@@ -144,13 +207,13 @@ Frame StompProtocol::handleLogin(const string& hostPort, const string& username,
 
     string host = hostPort.substr(0, colonPos);
     short port = static_cast<short>(stoi(hostPort.substr(colonPos + 1)));
-    cout << "got to login parse" << "Host: " << host << ", Port: " << port << endl;
 
     if (host.empty() ||  username.empty() || password.empty()) {//|| port.empty()
         std::cerr << "Missing one or more arguments. Expected <host:port> <username> <password>." << std::endl;
         return {};
     }
-    CH = new ConnectionHandler(host, port);
+
+    CH = make_shared<ConnectionHandler>(host, port);
     if(!CH->connect()){
         std::cerr << "Coulden't connect to server...." << std::endl;
         return {};
@@ -259,17 +322,6 @@ Frame StompProtocol::handleLogout() {
     return frame;
 }
 
-
-void StompProtocol::sendFrame(const Frame& frame) {
-    string frameStr = frame.toString();
-    //-----------------------------
-    cout << "starting the metode sendFrame"<< frame.toString() << endl;
-    if (!CH->sendFrameAscii(frameStr, '\0')) {
-        CH->close();
-        cerr << "Failed to send frame: " << frame.command << endl;
-    }
-}
-
 void StompProtocol::createSummary(const string& channel_name, const string& user, const string& file) {
     lock_guard<mutex> lock(eventSummaryMapMutex);
 
@@ -303,45 +355,15 @@ void StompProtocol::readLoop() {
     while (!shouldTerminate) {
         Frame response;
         if (CH != nullptr){
-           // ----------------------------------------------------------------
             if (CH->getFrame(response)) {
-             std::cout << "got frame" << response.toString() << std::endl;
-
                 handleFrame(response);
             }else {
                 cerr << "Failed to receive response from server." << endl;
-                 shouldTerminate = true; // i added this --------------------
             }
-
         }
         
     }
 }
-
-void StompProtocol::handleFrame(const Frame& response) {
-    if (response.command == "CONNECTED") {
-        connected = true;
-        cout << "Login successful." << endl;
-    } else if (response.command == "RECEIPT") {
-        int receiptId = stoi(response.headers.at("receipt-id"));
-        
-        lock_guard<mutex> gotReceiptLock(gotReceiptMutex); // שם מנעול ייחודי
-        if (gotReceipt[receiptId]) {
-            lock_guard<mutex> receiptCallbacksLock(receiptCallbacksMutex); // שם מנעול ייחודי
-            cout << receiptCallbacks[receiptId] << endl;
-            gotReceipt.erase(receiptId);
-            receiptCallbacks.erase(receiptId);
-        }
-        if (receiptId == receiptDisconnect) {
-            stop();
-        }
-    } else if (response.command == "ERROR") {
-        cerr << "Error frame received: " << response.body << endl;
-    } else {
-        cerr << "Unexpected frame received: " << response.command << endl;
-    }
-}
-
 
 vector<string> StompProtocol::splitString(const string& str, char delimiter) {
     vector<string> tokens;
@@ -352,3 +374,4 @@ vector<string> StompProtocol::splitString(const string& str, char delimiter) {
     }
     return tokens;
 }
+

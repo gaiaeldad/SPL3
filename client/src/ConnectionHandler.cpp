@@ -130,6 +130,7 @@ bool ConnectionHandler::getFrame(Frame &frame) {//our method
 }
 /// chat gave me 
 bool ConnectionHandler::sendFrameAscii(const std::string &frame, char delimiter) {
+	cout<< "got to sendFrameAscii " << endl;
     std::string frameWithDelimiter = frame + delimiter; // כולל תו הסיום
     return sendBytes(frameWithDelimiter.c_str(), frameWithDelimiter.length());
 }
