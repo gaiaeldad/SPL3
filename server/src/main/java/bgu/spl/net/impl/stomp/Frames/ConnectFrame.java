@@ -62,8 +62,7 @@ public class ConnectFrame extends Frame {
         String host = headers.get("host");
         if (host == null) {
             throw new IOException("Missing Header:CONNECT frame must include the 'host' header.");
-        }
-        //made a chnage here 25.1 
+        } 
         if (!host.equals(FrameHelper.HOST)&& !host.equals("127.0.0.1")) {
             throw new IOException("Invalid Host:The 'host' header must match: " + FrameHelper.HOST);
         }
@@ -80,11 +79,11 @@ public class ConnectFrame extends Frame {
         }
 
         if (!isValidLogin(login, passcode)) {
-            throw new IOException("Authentication Failed:The provided credentials are invalid.");
+            throw new IOException("Wrong password");
         }
 
         if (isUserLoggedIn(login)) {
-            throw new IOException("User Already Logged In:User '" + login + "' is already logged in.");
+            throw new IOException("User already logged in");
         }
     }
 
